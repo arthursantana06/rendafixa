@@ -180,7 +180,6 @@ export function DataExtractionPage() {
     }
   };
 
-  const allUploaded = Object.values(uploads).every(s => s === 'success');
 
   return (
     <div className="max-w-[1920px] mx-auto px-8 py-16">
