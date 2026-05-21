@@ -226,6 +226,75 @@ export function MethodologyPage({
 // Sub-components
 // ============================================================
 
+interface VisualIntervalBarProps {
+  direction: 'higher_is_better' | 'lower_is_better';
+  muitoBom: number;
+  bom: number;
+  moderado: number;
+  unit: string;
+}
+
+function VisualIntervalBar({ direction, muitoBom, bom, moderado, unit }: VisualIntervalBarProps) {
+  const isHigher = direction === 'higher_is_better';
+
+  const segments = isHigher 
+    ? [
+        { label: 'Ruim', color: 'bg-rose-500/20 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/30' },
+        { label: 'Moderado', color: 'bg-amber-500/20 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30' },
+        { label: 'Bom', color: 'bg-emerald-500/20 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30' },
+        { label: 'Muito Bom', color: 'bg-blue-500/20 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/30' }
+      ]
+    : [
+        { label: 'Muito Bom', color: 'bg-blue-500/20 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/30' },
+        { label: 'Bom', color: 'bg-emerald-500/20 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30' },
+        { label: 'Moderado', color: 'bg-amber-500/20 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30' },
+        { label: 'Ruim', color: 'bg-rose-500/20 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/30' }
+      ];
+
+  const boundaries = isHigher
+    ? [moderado, bom, muitoBom]
+    : [muitoBom, bom, moderado];
+
+  return (
+    <div className="w-full flex flex-col pt-1 pb-4">
+      {/* The Bar */}
+      <div className="h-6 w-full flex rounded-sm overflow-hidden border border-border/30 relative">
+        {segments.map((seg, i) => (
+          <div 
+            key={i} 
+            className={`w-1/4 ${seg.color} flex items-center justify-center transition-all duration-300`}
+          >
+            <span className="font-sans text-[8px] font-black uppercase tracking-widest text-center px-1">
+              {seg.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* The ticks & values */}
+      <div className="relative w-full h-8 mt-1.5">
+        {boundaries.map((val, idx) => {
+          const percentage = 25 * (idx + 1);
+          return (
+            <div 
+              key={idx} 
+              style={{ left: `${percentage}%` }} 
+              className="absolute -translate-x-1/2 flex flex-col items-center"
+            >
+              {/* Tick mark */}
+              <div className="w-[1px] h-1.5 bg-foreground/30 dark:bg-foreground/50"></div>
+              {/* Value label */}
+              <span className="font-mono text-[9px] font-bold text-foreground mt-1 bg-background px-1.5 py-0.5 border border-border/30 rounded-sm shadow-xs select-none">
+                {val !== undefined && val !== null && !isNaN(val) ? `${val}${unit}` : '—'}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface IndicatorEditorialBlockProps {
   indicator: IndicatorConfig;
   parameter?: ParametroIndicador;
@@ -330,12 +399,12 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
             <span className="normal-case font-normal">{indicator.sourceField}</span>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-4 border-t border-border/20">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4 border-t border-border/20">
             
-            {/* Left Column: Form parameter editor */}
-            <div className="lg:col-span-5 border-r border-border/20 pr-6 flex flex-col gap-4">
+            {/* Left Column: Form parameter editor using math symbols */}
+            <div className="lg:col-span-5 lg:border-r border-border/20 lg:pr-8 flex flex-col gap-4">
               <h5 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground">
-                Parâmetros Bancários
+                Configuração de Limites
               </h5>
               
               {!parameter ? (
@@ -343,55 +412,206 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
                   Carregando parâmetros...
                 </div>
               ) : (
-                <form onSubmit={handleFormSubmit} className="flex flex-col gap-3">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="flex flex-col gap-1">
-                      <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                        Muito Bom
-                      </label>
-                      <input 
-                        type="number"
-                        step="0.01"
-                        value={muitoBom}
-                        onChange={(e) => setMuitoBom(e.target.value)}
-                        className="bg-transparent border border-border/60 font-sans text-xs px-2 py-1 focus:outline-none focus:border-foreground"
-                        title="Valor limite para Muito Bom"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                        Bom
-                      </label>
-                      <input 
-                        type="number"
-                        step="0.01"
-                        value={bom}
-                        onChange={(e) => setBom(e.target.value)}
-                        className="bg-transparent border border-border/60 font-sans text-xs px-2 py-1 focus:outline-none focus:border-foreground"
-                        title="Valor limite para Bom"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                        Moderado
-                      </label>
-                      <input 
-                        type="number"
-                        step="0.01"
-                        value={moderado}
-                        onChange={(e) => setModerado(e.target.value)}
-                        className="bg-transparent border border-border/60 font-sans text-xs px-2 py-1 focus:outline-none focus:border-foreground"
-                        title="Valor limite para Moderado"
-                      />
-                    </div>
+                <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
+                  {/* Direction Badge */}
+                  <div className="flex items-center justify-between font-sans text-[9px] uppercase tracking-wider text-muted-foreground bg-muted/40 p-2 border border-border/30 rounded-sm">
+                    <span className="font-bold">Direção da Nota:</span>
+                    <span className="font-black text-foreground">
+                      {parameter.direction === 'higher_is_better' ? 'Maior é Melhor (↑)' : 'Menor é Melhor (↓)'}
+                    </span>
                   </div>
+
+                  {/* Math Formula Blocks */}
+                  {parameter.direction === 'higher_is_better' ? (
+                    <div className="flex flex-col gap-3 font-sans text-xs">
+                      {/* Muito Bom Row */}
+                      <div className="flex items-center justify-between bg-blue-500/5 border border-blue-500/10 p-2.5 rounded-sm">
+                        <span className="w-20 font-sans text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                          Muito Bom
+                        </span>
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <span className="text-foreground font-mono font-bold">x ≥</span>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            value={muitoBom}
+                            onChange={(e) => setMuitoBom(e.target.value)}
+                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                            title="Limite Muito Bom"
+                          />
+                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                        </div>
+                      </div>
+
+                      {/* Bom Row */}
+                      <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/10 p-2.5 rounded-sm">
+                        <span className="w-20 font-sans text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                          Bom
+                        </span>
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <input 
+                            type="number"
+                            step="0.01"
+                            value={bom}
+                            onChange={(e) => setBom(e.target.value)}
+                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                            title="Limite Bom"
+                          />
+                          <span className="text-foreground font-mono font-bold">≤ x &lt;</span>
+                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                            {muitoBom !== '' ? muitoBom : '—'}
+                          </span>
+                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                        </div>
+                      </div>
+
+                      {/* Moderado Row */}
+                      <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-sm">
+                        <span className="w-20 font-sans text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                          Moderado
+                        </span>
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <input 
+                            type="number"
+                            step="0.01"
+                            value={moderado}
+                            onChange={(e) => setModerado(e.target.value)}
+                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                            title="Limite Moderado"
+                          />
+                          <span className="text-foreground font-mono font-bold">≤ x &lt;</span>
+                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                            {bom !== '' ? bom : '—'}
+                          </span>
+                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                        </div>
+                      </div>
+
+                      {/* Ruim Row */}
+                      <div className="flex items-center justify-between bg-rose-500/5 border border-rose-500/10 p-2.5 rounded-sm">
+                        <span className="w-20 font-sans text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">
+                          Ruim
+                        </span>
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <span className="text-foreground font-mono font-bold">x &lt;</span>
+                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                            {moderado !== '' ? moderado : '—'}
+                          </span>
+                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3 font-sans text-xs">
+                      {/* Muito Bom Row */}
+                      <div className="flex items-center justify-between bg-blue-500/5 border border-blue-500/10 p-2.5 rounded-sm">
+                        <span className="w-20 font-sans text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                          Muito Bom
+                        </span>
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <span className="text-foreground font-mono font-bold">x ≤</span>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            value={muitoBom}
+                            onChange={(e) => setMuitoBom(e.target.value)}
+                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                            title="Limite Muito Bom"
+                          />
+                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                        </div>
+                      </div>
+
+                      {/* Bom Row */}
+                      <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/10 p-2.5 rounded-sm">
+                        <span className="w-20 font-sans text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                          Bom
+                        </span>
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                            {muitoBom !== '' ? muitoBom : '—'}
+                          </span>
+                          <span className="text-foreground font-mono font-bold">&lt; x ≤</span>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            value={bom}
+                            onChange={(e) => setBom(e.target.value)}
+                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                            title="Limite Bom"
+                          />
+                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                        </div>
+                      </div>
+
+                      {/* Moderado Row */}
+                      <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-sm">
+                        <span className="w-20 font-sans text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                          Moderado
+                        </span>
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                            {bom !== '' ? bom : '—'}
+                          </span>
+                          <span className="text-foreground font-mono font-bold">&lt; x ≤</span>
+                          <input 
+                            type="number"
+                            step="0.01"
+                            value={moderado}
+                            onChange={(e) => setModerado(e.target.value)}
+                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                            title="Limite Moderado"
+                          />
+                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                        </div>
+                      </div>
+
+                      {/* Ruim Row */}
+                      <div className="flex items-center justify-between bg-rose-500/5 border border-rose-500/10 p-2.5 rounded-sm">
+                        <span className="w-20 font-sans text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">
+                          Ruim
+                        </span>
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <span className="text-foreground font-mono font-bold">x &gt;</span>
+                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                            {moderado !== '' ? moderado : '—'}
+                          </span>
+                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Constraint Warning */}
+                  {(() => {
+                    const mbVal = Number(muitoBom);
+                    const bVal = Number(bom);
+                    const modVal = Number(moderado);
+                    const isHigherDir = parameter.direction === 'higher_is_better';
+                    const hasConflict = isHigherDir
+                      ? (!isNaN(mbVal) && !isNaN(bVal) && muitoBom !== '' && bom !== '' && mbVal <= bVal) ||
+                        (!isNaN(bVal) && !isNaN(modVal) && bom !== '' && moderado !== '' && bVal <= modVal) ||
+                        (!isNaN(mbVal) && !isNaN(modVal) && muitoBom !== '' && moderado !== '' && mbVal <= modVal)
+                      : (!isNaN(mbVal) && !isNaN(bVal) && muitoBom !== '' && bom !== '' && mbVal >= bVal) ||
+                        (!isNaN(bVal) && !isNaN(modVal) && bom !== '' && moderado !== '' && bVal >= modVal) ||
+                        (!isNaN(mbVal) && !isNaN(modVal) && muitoBom !== '' && moderado !== '' && mbVal >= modVal);
+
+                    if (hasConflict) {
+                      return (
+                        <div className="font-sans text-[10px] font-bold uppercase tracking-wide text-rose-600 bg-rose-500/5 p-3 border border-rose-500/20 rounded-sm leading-relaxed">
+                          ⚠️ Atenção: Os limites violam a consistência lógica ({isHigherDir ? 'Muito Bom > Bom > Moderado' : 'Muito Bom < Bom < Moderado'}).
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   <button
                     type="submit"
-                    className={`mt-2 font-sans text-[9px] font-bold uppercase tracking-widest py-1.5 px-3 border transition-colors self-start ${
+                    className={`font-sans text-[10px] font-bold uppercase tracking-widest py-3 px-4 border transition-all text-center cursor-pointer ${
                       isSaved 
                         ? 'bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600' 
-                        : 'bg-foreground border-foreground text-background hover:bg-foreground/80'
+                        : 'bg-foreground border-foreground text-background hover:bg-foreground/90'
                     }`}
                   >
                     {isSaved ? 'Parâmetros Salvos!' : 'Salvar Parâmetros'}
@@ -400,38 +620,53 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
               )}
             </div>
 
-            {/* Right Column: Dynamic Preview Grid */}
-            <div className="lg:col-span-7 flex flex-col gap-4">
-              <h5 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground">
-                Regras de Enquadramento
-              </h5>
+            {/* Right Column: Live Range Visualizer and textual summary */}
+            <div className="lg:col-span-7 flex flex-col gap-6">
+              <div>
+                <h5 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground mb-3">
+                  Visualização dos Intervalos
+                </h5>
+                <VisualIntervalBar 
+                  direction={parameter?.direction || indicator.direction}
+                  muitoBom={Number(muitoBom) || 0}
+                  bom={Number(bom) || 0}
+                  moderado={Number(moderado) || 0}
+                  unit={indicator.unit}
+                />
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-                {qualityLevels.map(({ key, label }) => {
-                  let previewText = indicator.criteria?.[key] || '';
-                  if (parameter) {
-                    const mbNum = Number(muitoBom) || 0;
-                    const bNum = Number(bom) || 0;
-                    const modNum = Number(moderado) || 0;
-                    const rules = getRulePreview(parameter.direction, mbNum, bNum, modNum, indicator.unit);
-                    
-                    if (key === 'muito_bom') previewText = `Valores classificados com nota máxima: ${rules.muito_bom}.`;
-                    else if (key === 'bom') previewText = `Valores considerados confortáveis: ${rules.bom}.`;
-                    else if (key === 'moderado') previewText = `Valores no limite de adequação: ${rules.moderado}.`;
-                    else if (key === 'ruim') previewText = `Valores de risco crítico: ${rules.ruim}.`;
-                  }
+              <div>
+                <h5 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground mb-3">
+                  Resumo das Regras de Enquadramento
+                </h5>
 
-                  return (
-                    <div key={key} className="flex flex-col items-start gap-1">
-                      <span className={`font-sans text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm ${colorMap[key]}`}>
-                        {label}
-                      </span>
-                      <p className="font-sans text-[10px] text-foreground/70 leading-relaxed">
-                        {previewText}
-                      </p>
-                    </div>
-                  );
-                })}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3 bg-muted/20 p-4 border border-border/40 rounded-sm">
+                  {qualityLevels.map(({ key, label }) => {
+                    let previewText = indicator.criteria?.[key] || '';
+                    if (parameter) {
+                      const mbNum = Number(muitoBom) || 0;
+                      const bNum = Number(bom) || 0;
+                      const modNum = Number(moderado) || 0;
+                      const rules = getRulePreview(parameter.direction, mbNum, bNum, modNum, indicator.unit);
+                      
+                      if (key === 'muito_bom') previewText = `Valores classificados com nota máxima: ${rules.muito_bom}.`;
+                      else if (key === 'bom') previewText = `Valores considerados confortáveis: ${rules.bom}.`;
+                      else if (key === 'moderado') previewText = `Valores no limite de adequação: ${rules.moderado}.`;
+                      else if (key === 'ruim') previewText = `Valores de risco crítico: ${rules.ruim}.`;
+                    }
+
+                    return (
+                      <div key={key} className="flex flex-col items-start gap-1">
+                        <span className={`font-sans text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm ${colorMap[key]}`}>
+                          {label}
+                        </span>
+                        <p className="font-sans text-[10px] text-foreground/75 leading-relaxed">
+                          {previewText}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -626,51 +861,214 @@ export function NewIndicatorForm({ onAdd, onClose }: NewIndicatorFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 mt-2">
-            <div className="flex flex-col gap-1">
-              <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                Limite Muito Bom
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={limiteMuitoBom}
-                onChange={(e) => setLimiteMuitoBom(e.target.value)}
-                placeholder="Ex: 15.0"
-                className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground placeholder:opacity-50"
-              />
+          {/* Math Formula Blocks for Creation */}
+          {direction === 'higher_is_better' ? (
+            <div className="flex flex-col gap-2.5 font-sans text-xs">
+              {/* Muito Bom Row */}
+              <div className="flex items-center justify-between bg-blue-500/5 border border-blue-500/10 p-2.5 rounded-sm">
+                <span className="w-20 font-sans text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                  Muito Bom
+                </span>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <span className="text-foreground font-mono font-bold">x ≥</span>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    value={limiteMuitoBom}
+                    onChange={(e) => setLimiteMuitoBom(e.target.value)}
+                    placeholder="Ex: 15"
+                    className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                    title="Limite Muito Bom"
+                  />
+                  <span className="text-muted-foreground font-mono w-4">%</span>
+                </div>
+              </div>
+
+              {/* Bom Row */}
+              <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/10 p-2.5 rounded-sm">
+                <span className="w-20 font-sans text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                  Bom
+                </span>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <input 
+                    type="number"
+                    step="0.01"
+                    value={limiteBom}
+                    onChange={(e) => setLimiteBom(e.target.value)}
+                    placeholder="Ex: 11"
+                    className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                    title="Limite Bom"
+                  />
+                  <span className="text-foreground font-mono font-bold">≤ x &lt;</span>
+                  <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                    {limiteMuitoBom !== '' ? limiteMuitoBom : '—'}
+                  </span>
+                  <span className="text-muted-foreground font-mono w-4">%</span>
+                </div>
+              </div>
+
+              {/* Moderado Row */}
+              <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-sm">
+                <span className="w-20 font-sans text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                  Moderado
+                </span>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <input 
+                    type="number"
+                    step="0.01"
+                    value={limiteModerado}
+                    onChange={(e) => setLimiteModerado(e.target.value)}
+                    placeholder="Ex: 9"
+                    className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                    title="Limite Moderado"
+                  />
+                  <span className="text-foreground font-mono font-bold">≤ x &lt;</span>
+                  <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                    {limiteBom !== '' ? limiteBom : '—'}
+                  </span>
+                  <span className="text-muted-foreground font-mono w-4">%</span>
+                </div>
+              </div>
+
+              {/* Ruim Row */}
+              <div className="flex items-center justify-between bg-rose-500/5 border border-rose-500/10 p-2.5 rounded-sm">
+                <span className="w-20 font-sans text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">
+                  Ruim
+                </span>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <span className="text-foreground font-mono font-bold">x &lt;</span>
+                  <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                    {limiteModerado !== '' ? limiteModerado : '—'}
+                  </span>
+                  <span className="text-muted-foreground font-mono w-4">%</span>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                Limite Bom
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={limiteBom}
-                onChange={(e) => setLimiteBom(e.target.value)}
-                placeholder="Ex: 12.0"
-                className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground placeholder:opacity-50"
-              />
+          ) : (
+            <div className="flex flex-col gap-2.5 font-sans text-xs">
+              {/* Muito Bom Row */}
+              <div className="flex items-center justify-between bg-blue-500/5 border border-blue-500/10 p-2.5 rounded-sm">
+                <span className="w-20 font-sans text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                  Muito Bom
+                </span>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <span className="text-foreground font-mono font-bold">x ≤</span>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    value={limiteMuitoBom}
+                    onChange={(e) => setLimiteMuitoBom(e.target.value)}
+                    placeholder="Ex: 5"
+                    className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                    title="Limite Muito Bom"
+                  />
+                  <span className="text-muted-foreground font-mono w-4">%</span>
+                </div>
+              </div>
+
+              {/* Bom Row */}
+              <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/10 p-2.5 rounded-sm">
+                <span className="w-20 font-sans text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                  Bom
+                </span>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                    {limiteMuitoBom !== '' ? limiteMuitoBom : '—'}
+                  </span>
+                  <span className="text-foreground font-mono font-bold">&lt; x ≤</span>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    value={limiteBom}
+                    onChange={(e) => setLimiteBom(e.target.value)}
+                    placeholder="Ex: 8"
+                    className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                    title="Limite Bom"
+                  />
+                  <span className="text-muted-foreground font-mono w-4">%</span>
+                </div>
+              </div>
+
+              {/* Moderado Row */}
+              <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-sm">
+                <span className="w-20 font-sans text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                  Moderado
+                </span>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                    {limiteBom !== '' ? limiteBom : '—'}
+                  </span>
+                  <span className="text-foreground font-mono font-bold">&lt; x ≤</span>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    value={limiteModerado}
+                    onChange={(e) => setLimiteModerado(e.target.value)}
+                    placeholder="Ex: 12"
+                    className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
+                    title="Limite Moderado"
+                  />
+                  <span className="text-muted-foreground font-mono w-4">%</span>
+                </div>
+              </div>
+
+              {/* Ruim Row */}
+              <div className="flex items-center justify-between bg-rose-500/5 border border-rose-500/10 p-2.5 rounded-sm">
+                <span className="w-20 font-sans text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">
+                  Ruim
+                </span>
+                <div className="flex items-center gap-2 flex-1 justify-end">
+                  <span className="text-foreground font-mono font-bold">x &gt;</span>
+                  <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                    {limiteModerado !== '' ? limiteModerado : '—'}
+                  </span>
+                  <span className="text-muted-foreground font-mono w-4">%</span>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                Limite Moderado
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={limiteModerado}
-                onChange={(e) => setLimiteModerado(e.target.value)}
-                placeholder="Ex: 10.0"
-                className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground placeholder:opacity-50"
-              />
-            </div>
+          )}
+
+          {/* Validation Warning */}
+          {(() => {
+            const mbVal = Number(limiteMuitoBom);
+            const bVal = Number(limiteBom);
+            const modVal = Number(limiteModerado);
+            const isHigherDir = direction === 'higher_is_better';
+            const hasConflict = isHigherDir
+              ? (!isNaN(mbVal) && !isNaN(bVal) && limiteMuitoBom !== '' && limiteBom !== '' && mbVal <= bVal) ||
+                (!isNaN(bVal) && !isNaN(modVal) && limiteBom !== '' && limiteModerado !== '' && bVal <= modVal) ||
+                (!isNaN(mbVal) && !isNaN(modVal) && limiteMuitoBom !== '' && limiteModerado !== '' && mbVal <= modVal)
+              : (!isNaN(mbVal) && !isNaN(bVal) && limiteMuitoBom !== '' && limiteBom !== '' && mbVal >= bVal) ||
+                (!isNaN(bVal) && !isNaN(modVal) && limiteBom !== '' && limiteModerado !== '' && bVal >= modVal) ||
+                (!isNaN(mbVal) && !isNaN(modVal) && limiteMuitoBom !== '' && limiteModerado !== '' && mbVal >= modVal);
+
+            if (hasConflict) {
+              return (
+                <div className="font-sans text-[10px] font-bold uppercase tracking-wide text-rose-600 bg-rose-500/5 p-3 border border-rose-500/20 rounded-sm leading-relaxed">
+                  ⚠️ Atenção: Os limites violam a consistência lógica ({isHigherDir ? 'Muito Bom > Bom > Moderado' : 'Muito Bom < Bom < Moderado'}).
+                </div>
+              );
+            }
+            return null;
+          })()}
+
+          {/* Live Preview Range Bar inside Drawer */}
+          <div className="flex flex-col gap-1 border-t border-border/20 pt-3 mt-1">
+            <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
+              Visualização Prévia dos Intervalos
+            </label>
+            <VisualIntervalBar 
+              direction={direction}
+              muitoBom={Number(limiteMuitoBom) || 0}
+              bom={Number(limiteBom) || 0}
+              moderado={Number(limiteModerado) || 0}
+              unit="%"
+            />
           </div>
 
           <button
             type="submit"
-            className="mt-auto font-sans text-[10px] font-black uppercase tracking-widest bg-foreground border border-foreground text-background py-3 hover:bg-foreground/90 transition-all cursor-pointer text-center"
+            className="mt-2 font-sans text-[10px] font-black uppercase tracking-widest bg-foreground border border-foreground text-background py-3.5 hover:bg-foreground/90 transition-all cursor-pointer text-center"
           >
             Adicionar Indicador
           </button>
