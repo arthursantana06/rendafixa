@@ -100,6 +100,66 @@ export const INDICATORS: IndicatorConfig[] = [
       ruim: 'Abaixo de 0,3%: Comprometido. Banco com dificuldade de gerar resultado de forma consistente.',
     },
   },
+  {
+    key: 'razao_alavancagem',
+    label: 'Razão de Alavancagem (Bacen)',
+    shortLabel: 'RA',
+    description: 'Mede o grau de alavancagem sem ponderação pelo risco. Bancos com índices acima de 8% possuem uma folga de capital gigantesca frente às suas exposições. Abaixo de 4%, o banco está perigosamente perto do limite regulatório do Bacen (3%), indicando uma operação altamente esticada.',
+    unit: '%',
+    source: 'IF.data > Prudencial > Alavancagem',
+    sourceField: 'Razão de Alavancagem (%)',
+    criteria: {
+      muito_bom: 'Acima de 8%: Excelente. Folga de capital robusta frente a exposições sem ponderação de risco.',
+      bom: 'Entre 6% e 8%: Nível confortável, dentro do esperado para bancos saudáveis.',
+      moderado: 'Entre 4% e 6%: Adequado, mas com buffer de capital reduzido.',
+      ruim: 'Abaixo de 4%: Alavancado. Banco operando perigosamente próximo ao limite prudencial mínimo (3%).',
+    },
+  },
+  {
+    key: 'deposito_vista_funding',
+    label: 'Depósito à vista / Funding',
+    shortLabel: 'DV/F',
+    description: 'Mede a proporção do funding total captada através de depósitos à vista. Representa capital com custo zero. Bancos com captação acima de 15% possuem vantagem competitiva brutal e margem líquida de juros (NIM) muito resiliente em cenários de juros altos.',
+    unit: '%',
+    source: 'IF.data > Dados Contábeis (Cosif) > Passivo',
+    sourceField: 'Depósito à vista / Funding Total (%)',
+    criteria: {
+      muito_bom: 'Acima de 15%: Excelente. Alta captação com custo zero e margem financeira muito resiliente.',
+      bom: 'Entre 8% e 15%: Saudável, conferindo boa rentabilidade operacional.',
+      moderado: 'Entre 3% e 8%: Aceitável, mas com dependência moderada de funding pago.',
+      ruim: 'Abaixo de 3%: Baixo. Operação depende quase integralmente de captações mais caras no mercado.',
+    },
+  },
+  {
+    key: 'ativo_total',
+    label: 'Ativo Total (R$ Bilhões)',
+    shortLabel: 'AT',
+    description: 'Mede o porte global do banco. O mercado bancário opera sob a lógica do Too Big To Fail e ganhos de escala. Parâmetros maiores que R$ 200 Bilhões enquadram os grandes players de relevância sistêmica (Segmentos S1 e S2). Classificações menores refletem maior risco de porte.',
+    unit: 'Bi',
+    source: 'IF.data > Resumo',
+    sourceField: 'Ativo Total',
+    criteria: {
+      muito_bom: 'Acima de R$ 200 Bilhões: Relevância sistêmica nacional elevada (S1 e S2).',
+      bom: 'Entre R$ 30 e R$ 200 Bilhões: Porte robusto. Players consolidados de médio e grande porte.',
+      moderado: 'Entre R$ 3 e R$ 30 Bilhões: Porte médio. Bancos de médio porte com atuação em nichos.',
+      ruim: 'Abaixo de R$ 3 Bilhões: Porte pequeno. Menor resiliência a choques macroeconômicos severos.',
+    },
+  },
+  {
+    key: 'carteira_credito',
+    label: 'Carteira de Crédito (R$ Bilhões)',
+    shortLabel: 'CC',
+    description: 'Mede o volume total da carteira de crédito ativa. O mercado bancário opera sob a lógica do Too Big To Fail e ganhos de escala. Parâmetros maiores que R$ 100 Bilhões enquadram os grandes players de relevância sistêmica.',
+    unit: 'Bi',
+    source: 'IF.data > Resumo',
+    sourceField: 'Carteira de Crédito Total',
+    criteria: {
+      muito_bom: 'Acima de R$ 100 Bilhões: Grande player com alta relevância de crédito no mercado.',
+      bom: 'Entre R$ 10 e R$ 100 Bilhões: Carteira robusta de médio e grande porte.',
+      moderado: 'Entre R$ 1 e R$ 10 Bilhões: Operação de crédito focada em nichos de mercado.',
+      ruim: 'Abaixo de R$ 1 Bilhão: Carteira de pequeno porte, menor penetração de mercado.',
+    },
+  },
 ];
 
 // Rating quality score mapping
@@ -149,6 +209,10 @@ export function classifyIndicator(key: string, bank: BankData): QualityRating {
     case 'icp': return classifyIndicatorWithValue('higher_is_better', value, 150, 100, 80);
     case 'roe': return classifyIndicatorWithValue('higher_is_better', value, 15, 10, 5);
     case 'roa': return classifyIndicatorWithValue('higher_is_better', value, 1.5, 0.8, 0.3);
+    case 'razao_alavancagem': return classifyIndicatorWithValue('higher_is_better', value, 8, 6, 4);
+    case 'deposito_vista_funding': return classifyIndicatorWithValue('higher_is_better', value, 15, 8, 3);
+    case 'ativo_total': return classifyIndicatorWithValue('higher_is_better', value, 200, 30, 3);
+    case 'carteira_credito': return classifyIndicatorWithValue('higher_is_better', value, 100, 10, 1);
     default: return 'moderado';
   }
 }
@@ -194,18 +258,40 @@ export function formatIndicatorValue(key: string, bank: BankData): string {
     case 'icp': return `${Number(bank.icp).toFixed(1)}%`;
     case 'roe': return `${Number(bank.roe).toFixed(1)}%`;
     case 'roa': return `${Number(bank.roa).toFixed(2)}%`;
+    case 'razao_alavancagem': return `${Number(value).toFixed(2)}%`;
+    case 'deposito_vista_funding': return `${Number(value).toFixed(2)}%`;
+    case 'ativo_total': return `R$ ${Number(value).toFixed(1)} Bi`;
+    case 'carteira_credito': return `R$ ${Number(value).toFixed(1)} Bi`;
     default: return `${Number(value).toFixed(1)}%`;
   }
 }
 
 export function getDefaultWeights(): Record<IndicatorKey, number> {
   return {
-    ib: 16.5, cet1: 16.5, ii: 17.0, icp: 16.5, roe: 16.5, roa: 17.0
+    ib: 10.0,
+    cet1: 10.0,
+    ii: 10.0,
+    icp: 10.0,
+    roe: 10.0,
+    roa: 10.0,
+    razao_alavancagem: 10.0,
+    deposito_vista_funding: 10.0,
+    ativo_total: 10.0,
+    carteira_credito: 10.0
   };
 }
 
 export function getDefaultKnockouts(): Record<IndicatorKey, 'none' | 'ruim' | 'moderado'> {
   return {
-    ib: 'none', cet1: 'none', ii: 'none', icp: 'none', roe: 'none', roa: 'none'
+    ib: 'none',
+    cet1: 'none',
+    ii: 'none',
+    icp: 'none',
+    roe: 'none',
+    roa: 'none',
+    razao_alavancagem: 'none',
+    deposito_vista_funding: 'none',
+    ativo_total: 'none',
+    carteira_credito: 'none'
   };
 }

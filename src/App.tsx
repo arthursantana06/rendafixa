@@ -64,6 +64,7 @@ function App() {
           carteira_credito: row.carteira_credito ? Number(row.carteira_credito) : 0,
           segmento: row.segmento || 'S/S',
           razao_alavancagem: row.razao_alavancagem ? Number(row.razao_alavancagem) : 0,
+          deposito_vista_funding: row.deposito_vista_funding ? Number(row.deposito_vista_funding) : 0,
           pcld: row.pcld ? Number(row.pcld) : 0,
           total_depositos: row.total_depositos ? Number(row.total_depositos) : 0,
           captacoes_totais: row.captacoes_totais ? Number(row.captacoes_totais) : 0,

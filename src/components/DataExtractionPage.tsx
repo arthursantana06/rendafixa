@@ -18,6 +18,7 @@ interface ParseResultRow {
   'Indice_Basileia (%)'?: string;
   'Capital_Principal_CET1 (%)'?: string;
   'Razao_Alavancagem (%)'?: string;
+  'Deposito_Vista_vs_Funding (%)'?: string;
   PCLD_Saldo?: string;
   Total_Depositos?: string;
   Captacoes_Totais?: string;
@@ -199,6 +200,10 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
               { key: 'icp', label: 'Cobertura', cols: ['ICP_Cobertura (%)', 'ICP_Cobertura', 'icp'] },
               { key: 'roe', label: 'ROE', cols: ['ROE_Calculado (%)', 'ROE_Calculado', 'roe'] },
               { key: 'roa', label: 'ROA', cols: ['ROA_Calculado (%)', 'ROA_Calculado', 'roa'] },
+              { key: 'razao_alavancagem', label: 'Razão de Alavancagem', cols: ['Razao_Alavancagem (%)', 'Razao_Alavancagem', 'razao_alavancagem'] },
+              { key: 'deposito_vista_funding', label: 'Depósito à Vista / Funding', cols: ['Deposito_Vista_vs_Funding (%)', 'Deposito_Vista_vs_Funding', 'deposito_vista_funding'] },
+              { key: 'ativo_total', label: 'Ativo Total', cols: ['Ativo Total', 'ativo_total'] },
+              { key: 'carteira_credito', label: 'Carteira de Crédito', cols: ['Carteira de Crédito Total', 'carteira_credito_total', 'carteira_credito'] },
             ];
 
             for (const ind of indicatorsMap) {
@@ -247,14 +252,15 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
                 codigo,
                 nome: fixDoubleUtf8(String(row['Instituição'] || row['instituicao'] || 'N/I').trim()),
                 cnpj: String(row['CNPJ'] || row['cnpj'] || codigo).trim(),
-                ativo_total: parseNumber(row['Ativo Total'] || row['ativo_total']),
+                ativo_total: parseNumber(row['Ativo Total'] || row['ativo_total']) / 1000000,
                 patrimonio_liquido: parseNumber(row['Patrimônio Líquido'] || row['patrimonio_liquido']),
                 lucro_liquido: parseNumber(row['Lucro Líquido'] || row['lucro_liquido']),
-                carteira_credito: parseNumber(row['Carteira de Crédito Total'] || row['carteira_credito_total'] || row['Carteira de Crédito']),
+                carteira_credito: parseNumber(row['Carteira de Crédito Total'] || row['carteira_credito_total'] || row['Carteira de Crédito']) / 1000000,
                 segmento: String(row['Segmento_Prudencial'] || row['segmento_prudencial'] || 'S/S').trim(),
                 ib: parseNumber(row['Indice_Basileia (%)'] || row['Indice_Basileia'] || row['ib']),
                 cet1: parseNumber(row['Capital_Principal_CET1 (%)'] || row['Capital_Principal_CET1'] || row['cet1']),
                 razao_alavancagem: parseNumber(row['Razao_Alavancagem (%)'] || row['Razao_Alavancagem']),
+                deposito_vista_funding: parseNumber(row['Deposito_Vista_vs_Funding (%)'] || row['Deposito_Vista_vs_Funding'] || row['deposito_vista_funding']),
                 pcld: parseNumber(row['PCLD_Saldo'] || row['pcld_saldo'] || row['pcld']),
                 total_depositos: parseNumber(row['Total_Depositos'] || row['total_depositos']),
                 captacoes_totais: parseNumber(row['Captacoes_Totais'] || row['captacoes_totais']),

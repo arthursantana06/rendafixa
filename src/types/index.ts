@@ -47,6 +47,7 @@ export interface BankData {
   carteira_credito?: number;
   segmento?: string;
   razao_alavancagem?: number;
+  deposito_vista_funding?: number;
   pcld?: number;
   total_depositos?: number;
   captacoes_totais?: number;
