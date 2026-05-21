@@ -76,9 +76,38 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
   const [isProcessing, setIsProcessing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
-  const [lastUpload, setLastUpload] = useState<string | null>(() => localStorage.getItem('rendafixa:last_upload_date'));
+  const [lastUpload, setLastUpload] = useState<string | null>(null);
   
   const consoleEndRef = useRef<HTMLDivElement | null>(null);
+
+  const fetchLastUploadDate = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('emissores_bancarios')
+        .select('updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(1);
+
+      if (!error && data && data.length > 0 && data[0].updated_at) {
+        const date = new Date(data[0].updated_at);
+        const formatted = date.toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+        setLastUpload(formatted);
+      }
+    } catch (e) {
+      console.error('Erro ao buscar data do último upload:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchLastUploadDate();
+  }, []);
 
   useEffect(() => {
     if (consoleEndRef.current) {
@@ -268,18 +297,9 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
             log('SUCCESS', `Lote final processado. Transação concluída com sucesso!`);
             await sleep(150);
 
-            const nowStr = new Date().toLocaleDateString('pt-BR', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            });
-            localStorage.setItem('rendafixa:last_upload_date', nowStr);
-            setLastUpload(nowStr);
+            await fetchLastUploadDate();
 
-            log('SUCCESS', `Base consolidada atualizada com sucesso em ${nowStr}.`);
+            log('SUCCESS', `Base consolidada atualizada com sucesso.`);
             setUploadStatus('success');
             
             if (onUploadSuccess) onUploadSuccess();
