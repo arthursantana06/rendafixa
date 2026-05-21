@@ -6,7 +6,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Header } from '@/components/Header';
-import { ConfigPanel } from '@/components/ConfigPanel';
 import { DataTable } from '@/components/DataTable';
 import { MethodologyPage } from '@/components/MethodologyPage';
 import { DataExtractionPage } from '@/components/DataExtractionPage';

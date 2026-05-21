@@ -50,6 +50,8 @@ export interface BankData {
   captacoes_totais?: number;
   atraso_total?: number;
   ldr?: number;
+  ie?: number;
+  lcr?: number;
 }
 
 export interface WeightConfig {

@@ -3,7 +3,7 @@
 // ============================================================
 
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, AlertCircle, Calendar, Play, FileSpreadsheet } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Calendar, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import Papa from 'papaparse';
 
@@ -238,7 +238,7 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
                 rating: 'SR',
                 fgc: 'coberto_250k'
               };
-            }).filter(Boolean);
+            }).filter(Boolean) as any[];
 
             if (mappedBanks.length === 0) {
               throw new Error('Nenhum registro com código de emissor numérico válido foi estruturado.');
