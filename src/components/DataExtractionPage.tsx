@@ -28,6 +28,8 @@ interface ParseResultRow {
   'ICP_Cobertura (%)'?: string;
   'ROE_Calculado (%)'?: string;
   'ROA_Calculado (%)'?: string;
+  'Indice_Eficiencia (%)'?: string;
+  'LCR_Indice_Liquidez_Curto_Prazo (%)'?: string;
 }
 
 function parseNumber(value: any): number {
@@ -204,6 +206,8 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
               { key: 'deposito_vista_funding', label: 'Depósito à Vista / Funding', cols: ['Deposito_Vista_vs_Funding (%)', 'Deposito_Vista_vs_Funding', 'deposito_vista_funding'] },
               { key: 'ativo_total', label: 'Ativo Total', cols: ['Ativo Total', 'ativo_total'] },
               { key: 'carteira_credito', label: 'Carteira de Crédito', cols: ['Carteira de Crédito Total', 'carteira_credito_total', 'carteira_credito'] },
+              { key: 'ie', label: 'Índice de Eficiência', cols: ['Indice_Eficiencia (%)', 'Indice_Eficiencia', 'ie', 'Índice de Eficiência', 'Indice de Eficiencia (%)'] },
+              { key: 'lcr', label: 'LCR (Liquidez Curto Prazo)', cols: ['LCR - Índice de Liquidez de Curto Prazo (%)', 'LCR_Indice_Liquidez_Curto_Prazo (%)', 'lcr', 'LCR', 'LCR (%)'] },
             ];
 
             for (const ind of indicatorsMap) {
@@ -270,6 +274,8 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
                 icp: parseNumber(row['ICP_Cobertura (%)'] || row['ICP_Cobertura'] || row['icp']),
                 roe: parseNumber(row['ROE_Calculado (%)'] || row['ROE_Calculado'] || row['roe']),
                 roa: parseNumber(row['ROA_Calculado (%)'] || row['ROA_Calculado'] || row['roa']),
+                ie: parseNumber(row['Indice_Eficiencia (%)'] || row['Indice_Eficiencia'] || row['ie'] || row['Índice de Eficiência'] || row['Indice de Eficiencia (%)']),
+                lcr: parseNumber(row['LCR - Índice de Liquidez de Curto Prazo (%)'] || row['LCR_Indice_Liquidez_Curto_Prazo (%)'] || row['lcr'] || row['LCR'] || row['LCR (%)']),
                 rating: 'SR',
                 fgc: 'coberto_250k'
               };
@@ -433,15 +439,15 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
             <ul className="flex flex-col gap-2 font-sans text-[11px] text-foreground/70 leading-relaxed">
               <li className="flex gap-2">
                 <span className="text-muted-foreground">—</span>
-                Estrutura compatível com os 6 indicadores cadastrados no banco.
+                Estrutura compatível com os 12 indicadores cadastrados no banco (IB, CET1, II, ICP, ROE, ROA, RA, DV/F, AT, CC, IE, LCR).
               </li>
               <li className="flex gap-2">
                 <span className="text-muted-foreground">—</span>
-                Validação automática de parâmetros e verificação de regras ausentes.
+                Validação automática de parâmetros e verificação de regras ausentes em tempo real.
               </li>
               <li className="flex gap-2">
                 <span className="text-muted-foreground">—</span>
-                Divisão automática dos emissores em lotes de alto desempenho.
+                Divisão automática dos emissores em lotes de alto desempenho para evitar limites de timeout.
               </li>
             </ul>
           </div>

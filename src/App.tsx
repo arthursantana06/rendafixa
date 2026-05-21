@@ -70,6 +70,8 @@ function App() {
           captacoes_totais: row.captacoes_totais ? Number(row.captacoes_totais) : 0,
           atraso_total: row.atraso_total ? Number(row.atraso_total) : 0,
           ldr: row.ldr ? Number(row.ldr) : 0,
+          ie: row.ie ? Number(row.ie) : 0,
+          lcr: row.lcr ? Number(row.lcr) : 0,
         })) as BankData[];
         setBanks(mappedBanks);
       }

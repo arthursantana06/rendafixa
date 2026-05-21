@@ -160,6 +160,36 @@ export const INDICATORS: IndicatorConfig[] = [
       ruim: 'Abaixo de R$ 1 Bilhão: Carteira de pequeno porte, menor penetração de mercado.',
     },
   },
+  {
+    key: 'ie',
+    label: 'Índice de Eficiência Operacional',
+    shortLabel: 'IE',
+    description: 'Revela quanto o banco gasta operacionalmente para gerar cada real de receita. Um banco com alto índice de eficiência consome grande parte da receita em custos fixos, deixando menos margem para provisões, distribuição de lucros e capitalização - o que, em ambientes adversos, pode comprometer a solvência da instituição.',
+    unit: '%',
+    source: 'IF.data > Dados por Instituição > Rentabilidade',
+    sourceField: 'Índice de Eficiência',
+    criteria: {
+      muito_bom: 'Abaixo de 45%: Banco muito eficiente. Estrutura enxuta com forte alavancagem operacional.',
+      bom: 'Entre 45% e 55%: Eficiência adequada para o mercado bancário brasileiro.',
+      moderado: 'Entre 55% e 70%: Custo elevado. Pressiona margens, especialmente em ciclos de queda de juros ou alta inadimplência.',
+      ruim: 'Acima de 70%: Ineficiente. Estrutura de custos insustentável a longo prazo.',
+    },
+  },
+  {
+    key: 'lcr',
+    label: 'Índice de Liquidez de Curto Prazo (LCR)',
+    shortLabel: 'LCR',
+    description: 'Mede a capacidade do banco de sobreviver a um estresse de liquidez por 30 dias sem recorrer ao mercado ou ao BACEN. É uma das métricas mais diretas de risco de liquidez - relevante para emissores de CDBs e outros papéis de curto e médio prazo, cujos pagamentos dependem da capacidade de caixa do banco.',
+    unit: '%',
+    source: 'IF.data > Dados por Instituição > Prudencial > Liquidez',
+    sourceField: 'LCR - Índice de Liquidez de Curto Prazo',
+    criteria: {
+      muito_bom: 'Acima de 150%: Excelente posição de liquidez. Amortecedor robusto para cenários de estresse.',
+      bom: 'Entre 120% e 150%: Posição confortável. Folga adequada acima do mínimo regulatório.',
+      moderado: 'Entre 100% e 120%: No limite regulatório. Pouca margem para absorção de choques de liquidez.',
+      ruim: 'Abaixo de 100%: Descumpre o mínimo regulatório. Risco elevado; instituição sob atenção do BACEN.',
+    },
+  },
 ];
 
 // Rating quality score mapping
@@ -213,6 +243,8 @@ export function classifyIndicator(key: string, bank: BankData): QualityRating {
     case 'deposito_vista_funding': return classifyIndicatorWithValue('higher_is_better', value, 15, 8, 3);
     case 'ativo_total': return classifyIndicatorWithValue('higher_is_better', value, 200, 30, 3);
     case 'carteira_credito': return classifyIndicatorWithValue('higher_is_better', value, 100, 10, 1);
+    case 'ie': return classifyIndicatorWithValue('lower_is_better', value, 45, 55, 70);
+    case 'lcr': return classifyIndicatorWithValue('higher_is_better', value, 150, 120, 100);
     default: return 'moderado';
   }
 }
@@ -262,6 +294,8 @@ export function formatIndicatorValue(key: string, bank: BankData): string {
     case 'deposito_vista_funding': return `${Number(value).toFixed(2)}%`;
     case 'ativo_total': return `R$ ${Number(value).toFixed(1)} Bi`;
     case 'carteira_credito': return `R$ ${Number(value).toFixed(1)} Bi`;
+    case 'ie': return `${Number(value).toFixed(1)}%`;
+    case 'lcr': return `${Number(value).toFixed(1)}%`;
     default: return `${Number(value).toFixed(1)}%`;
   }
 }
@@ -277,7 +311,9 @@ export function getDefaultWeights(): Record<IndicatorKey, number> {
     razao_alavancagem: 10.0,
     deposito_vista_funding: 10.0,
     ativo_total: 10.0,
-    carteira_credito: 10.0
+    carteira_credito: 10.0,
+    ie: 10.0,
+    lcr: 10.0
   };
 }
 
@@ -292,6 +328,8 @@ export function getDefaultKnockouts(): Record<IndicatorKey, 'none' | 'ruim' | 'm
     razao_alavancagem: 'none',
     deposito_vista_funding: 'none',
     ativo_total: 'none',
-    carteira_credito: 'none'
+    carteira_credito: 'none',
+    ie: 'none',
+    lcr: 'none'
   };
 }
