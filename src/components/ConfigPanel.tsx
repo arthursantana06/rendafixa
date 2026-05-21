@@ -15,6 +15,7 @@ interface ConfigPanelProps {
   onKnockoutChange: (key: IndicatorKey, level: KnockoutLevel) => void;
   onResetWeights: () => void;
   isOpen: boolean;
+  compact?: boolean;
 }
 
 export function ConfigPanel({
@@ -24,6 +25,7 @@ export function ConfigPanel({
   onKnockoutChange,
   onResetWeights,
   isOpen,
+  compact = false,
 }: ConfigPanelProps) {
   const [activeTab, setActiveTab] = useState<'weights' | 'knockouts'>('weights');
   
@@ -33,11 +35,11 @@ export function ConfigPanel({
   if (!isOpen) return null;
 
   return (
-    <div className="border-b border-border/60 bg-muted/20 animate-in slide-in-from-top-2 duration-300">
-      <div className="mx-auto max-w-[1920px] px-8 py-8">
+    <div className={compact ? "w-full animate-in slide-in-from-top-2 duration-300" : "border-b border-border/60 bg-muted/20 animate-in slide-in-from-top-2 duration-300"}>
+      <div className={compact ? "py-2 flex flex-col gap-4" : "mx-auto max-w-[1920px] px-8 py-8"}>
         
         {/* Navigation & Validation Row */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-10">
+        <div className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${compact ? 'mb-4' : 'mb-10'}`}>
           <div className="flex gap-6 border-b border-border/40 pb-2">
             <button
               onClick={() => setActiveTab('weights')}
@@ -83,7 +85,7 @@ export function ConfigPanel({
 
         {/* Weights Tab */}
         {activeTab === 'weights' && (
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-x-12 gap-y-10">
+          <div className={compact ? "grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-6" : "grid grid-cols-2 lg:grid-cols-5 gap-x-12 gap-y-10"}>
             {INDICATORS.map((ind) => (
               <div key={ind.key} className="flex flex-col gap-2">
                 <div className="flex items-end justify-between">
@@ -99,7 +101,7 @@ export function ConfigPanel({
                   onValueChange={(v) => onWeightChange(ind.key, v[0])}
                   max={50}
                   min={0}
-                  step={1}
+                  step={0.5}
                   className="py-2"
                 />
                 <p className="font-serif text-xs italic text-muted-foreground line-clamp-1" title={ind.label}>
@@ -112,7 +114,7 @@ export function ConfigPanel({
 
         {/* Knockouts Tab */}
         {activeTab === 'knockouts' && (
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-8">
+          <div className={compact ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" : "grid grid-cols-2 lg:grid-cols-5 gap-8"}>
             {INDICATORS.map((ind) => (
               <KnockoutSelector
                 key={ind.key}

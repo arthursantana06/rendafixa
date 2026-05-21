@@ -2,9 +2,9 @@
 // DATATABLE COMPONENT - Editorial Spreadsheet Layout
 // ============================================================
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
-import { INDICATORS, getQualityColor } from '@/lib/indicators';
+import { INDICATORS, getQualityColor, getQualityDotColor } from '@/lib/indicators';
 import type { BankAnalysis, IndicatorKey, SortConfig } from '@/types';
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, Check, X } from 'lucide-react';
 
@@ -39,14 +39,29 @@ export function DataTable({ analyses }: DataTableProps) {
           return dir * (a.status === b.status ? 0 : a.status === 'elegivel' ? -1 : 1);
         default: {
           const key = sortConfig.column as IndicatorKey;
-          const aScore = a.indicators[key]?.score ?? 0;
-          const bScore = b.indicators[key]?.score ?? 0;
-          return dir * (aScore - bScore);
+          const aVal = Number(a.indicators[key]?.value) || 0;
+          const bVal = Number(b.indicators[key]?.value) || 0;
+          return dir * (aVal - bVal);
         }
       }
     });
     return arr;
   }, [filtered, sortConfig]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  // Reset page to 1 on query or sort change to avoid out of bounds view
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sortConfig]);
+
+  const totalPages = Math.ceil(sorted.length / itemsPerPage);
+
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return sorted.slice(start, start + itemsPerPage);
+  }, [sorted, currentPage]);
 
   const handleSort = (column: string) => {
     setSortConfig(prev => ({
@@ -121,7 +136,7 @@ export function DataTable({ analyses }: DataTableProps) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((analysis) => (
+            {paginated.map((analysis) => (
               <BankRow key={analysis.bank.id} analysis={analysis} />
             ))}
           </tbody>
@@ -130,6 +145,40 @@ export function DataTable({ analyses }: DataTableProps) {
         {sorted.length === 0 && (
           <div className="py-12 text-center text-muted-foreground font-serif italic">
             Nenhum emissor correspondente à busca.
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-6 border-t border-border/40 bg-muted/5 mt-6">
+            <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Mostrando {Math.min(sorted.length, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(sorted.length, currentPage * itemsPerPage)} de {sorted.length} emissores
+            </span>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => {
+                  setCurrentPage(prev => Math.max(1, prev - 1));
+                  document.getElementById('search-banks')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                disabled={currentPage === 1}
+                className="font-sans text-[10px] font-bold uppercase tracking-widest px-4 py-2 border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40 disabled:hover:bg-background transition-colors cursor-pointer"
+              >
+                Anterior
+              </button>
+              <span className="font-serif text-sm italic text-muted-foreground">
+                Página <span className="font-sans text-xs font-bold not-italic text-foreground">{currentPage}</span> de <span className="font-sans text-xs font-bold not-italic text-foreground">{totalPages}</span>
+              </span>
+              <button
+                onClick={() => {
+                  setCurrentPage(prev => Math.min(totalPages, prev + 1));
+                  document.getElementById('search-banks')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                disabled={currentPage === totalPages}
+                className="font-sans text-[10px] font-bold uppercase tracking-widest px-4 py-2 border border-border bg-background text-foreground hover:bg-muted disabled:opacity-40 disabled:hover:bg-background transition-colors cursor-pointer"
+              >
+                Próxima
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -162,9 +211,16 @@ function BankRow({ analysis }: { analysis: BankAnalysis }) {
 
       {/* Score */}
       <td className="py-4 px-3">
-        <span className="font-serif text-xl font-black text-foreground">
-          {isKnockedOut ? 'N/A' : weightedScore.toFixed(1)}
-        </span>
+        <div className="flex flex-col">
+          <span className="font-serif text-xl font-black text-foreground">
+            {isKnockedOut ? 'N/A' : weightedScore.toFixed(1)}
+          </span>
+          {bank.rating && (
+            <span className="font-sans text-[10px] tracking-wider text-muted-foreground uppercase font-bold mt-0.5 whitespace-nowrap">
+              Rating: {bank.rating}
+            </span>
+          )}
+        </div>
       </td>
 
       {/* Status */}
@@ -190,14 +246,23 @@ function BankRow({ analysis }: { analysis: BankAnalysis }) {
         const result = indicators[ind.key];
         return (
           <td key={ind.key} className="py-4 px-3">
-            <span className={`font-sans text-sm tracking-tight ${
-              isKnockedOut ? 'text-muted-foreground/50' : getQualityColor(result.rating)
-            }`}>
-              {result.displayValue}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span 
+                className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${
+                  isKnockedOut ? 'bg-muted-foreground/20' : getQualityDotColor(result.rating)
+                }`}
+                title={result.rating.replace('_', ' ')}
+              />
+              <span className={`font-sans text-sm tracking-tight ${
+                isKnockedOut ? 'text-muted-foreground/50' : getQualityColor(result.rating)
+              }`}>
+                {result.displayValue}
+              </span>
+            </div>
           </td>
         );
       })}
+
     </tr>
   );
 }

@@ -116,3 +116,11 @@
 .tab-indicator {
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+@keyframes loadingBar {
+  0% { left: -33%; }
+  100% { left: 100%; }
+}
+.animate-loading-bar {
+  animation: loadingBar 1.5s infinite ease-in-out;
+}

@@ -10,7 +10,15 @@ export interface ExtractedBankData {
   patrimonio_liquido?: number;
   ativo_total?: number;
   lucro_liquido?: number;
-  // Others to be added as needed
+  carteira_credito?: number;
+  roe?: number;
+  roa?: number;
+  ie?: number;
+  ii?: number;
+  icp?: number;
+  lcr?: number;
+  rating?: string;
+  fgc?: string;
 }
 
 /**
@@ -61,7 +69,7 @@ function parseIfDataCsv(file: File): Promise<any[]> {
   return new Promise((resolve, reject) => {
     Papa.parse(file, {
       delimiter: ';',
-      encoding: 'ISO-8859-1', // Padrão BACEN
+      encoding: 'UTF-8', // O BACEN na nova versão usa UTF-8 com BOM
       skipEmptyLines: true,
       complete: (results) => {
         let headerIndex = -1;
@@ -89,7 +97,7 @@ function parseIfDataCsv(file: File): Promise<any[]> {
           
           const codigoVal = rowArray[codigoIdx];
           // Valida se a linha tem um Código numérico (ignorando linhas de sub-cabeçalho)
-          if (!codigoVal || !/^\\d+$/.test(codigoVal.trim())) {
+          if (!codigoVal || !/^\d+$/.test(codigoVal.trim())) {
              continue;
           }
 
@@ -124,15 +132,28 @@ export async function extractCapital(file: File): Promise<Partial<ExtractedBankD
   }).filter(b => b.codigo && b.codigo !== 'undefined');
 }
 
-// 2. Demonstração de Resultado (O usuário mencionou usar Resumo para base, mas DRE para os índices em si se vierem)
+// 2. Demonstração de Resultado
 export async function extractResultado(file: File): Promise<Partial<ExtractedBankData>[]> {
   const data = await parseIfDataCsv(file);
   return data.map(row => {
-    // Mapeamento exato depende da coluna do DRE, vamos inferir nomes prováveis ou retornar cru.
-    // Como a instrução diz "ROE, ROA e Índice de Eficiência", precisamos descobrir as colunas reais.
+    const keys = Object.keys(row);
+    // As colunas de DRE vêm como _37, _38 etc se não houver cabeçalho correto, ou pelo nome
+    const getVal = (idx: number, fallback: string) => parseBacenNumber(row[`_${idx}`] || row[fallback] || row[keys[idx]]) || 0;
+    
+    const dp = getVal(37, 'Despesas de Pessoal (o)');
+    const da = getVal(38, 'Despesas Administrativas (p)');
+    const ri = getVal(30, 'Resultado de Intermediação Financeira');
+    const rp = getVal(34, 'Resultado com Transações de Pagamento (l)');
+    const rt = getVal(35, 'Rendas de Tarifas Bancárias (m)');
+    const ro = getVal(36, 'Outras Rendas de Prestação de Serviços (n)');
+    
+    const receitas = ri + rp + rt + ro;
+    const despesas = Math.abs(dp) + Math.abs(da);
+    const ie = receitas > 0 ? (despesas / receitas) * 100 : undefined;
+
     return {
-      codigo: String(row['Código']).trim(),
-      // Extrair indicadores de rentabilidade aqui quando souber os cabeçalhos literais
+      codigo: String(row['Código'] || row[keys[1]]).trim(),
+      ie
     };
   }).filter(b => b.codigo && b.codigo !== 'undefined');
 }
@@ -145,7 +166,7 @@ export async function extractAtivo(file: File): Promise<Partial<ExtractedBankDat
     // Como usamos o cabeçalho original, precisamos ver qual o nome da 15ª coluna (índice 14).
     // Para simplificar, vou extrair a chave se for 'Unnamed: 14' ou pegar pelo índice dos values.
     const keys = Object.keys(row);
-    const pcldRaw = row['Unnamed: 14'] || row[keys[14]]; 
+    const pcldRaw = row['Unnamed_14'] || row['Perda Esperada (e2)'] || row[keys[14]]; 
     let pcld = parseBacenNumber(pcldRaw);
     
     // PCLD costuma ser negativo, pegamos valor absoluto ou multiplicamos por -1
@@ -167,6 +188,9 @@ export async function extractResumo(file: File): Promise<Partial<ExtractedBankDa
       patrimonio_liquido: parseBacenNumber(row['Patrimônio Líquido']),
       ativo_total: parseBacenNumber(row['Ativo Total']),
       lucro_liquido: parseBacenNumber(row['Lucro Líquido']),
+      carteira_credito: parseBacenNumber(row['Carteira de Crédito']),
+      ib: parseBacenNumber(row['Índice de Basileia']),
+      ii: parseBacenNumber(row['Índice de Imobilização']),
     };
   }).filter(b => b.codigo && b.codigo !== 'undefined');
 }
@@ -204,5 +228,20 @@ export function mergeExtractedData(
     });
   });
 
-  return Array.from(bankMap.values());
+  const merged = Array.from(bankMap.values());
+  
+  // Calcular indicadores derivados (ROE, ROA, ICP)
+  merged.forEach(b => {
+    if (b.lucro_liquido !== undefined && b.patrimonio_liquido !== undefined && b.patrimonio_liquido !== 0) {
+      b.roe = (b.lucro_liquido / b.patrimonio_liquido) * 100;
+    }
+    if (b.lucro_liquido !== undefined && b.ativo_total !== undefined && b.ativo_total !== 0) {
+      b.roa = (b.lucro_liquido / b.ativo_total) * 100;
+    }
+    if (b.pcld !== undefined && b.carteira_credito !== undefined && b.carteira_credito !== 0) {
+      b.icp = (b.pcld / b.carteira_credito) * 100;
+    }
+  });
+
+  return merged;
 }

@@ -1,9 +1,5 @@
-// ============================================================
-// ANALYSIS ENGINE - Score Calculation & Knockout Logic
-// ============================================================
-
-import type { BankData, BankAnalysis, IndicatorKey, IndicatorResult, KnockoutLevel } from '@/types';
-import { INDICATORS, classifyIndicator, getQualityScore, formatIndicatorValue } from './indicators';
+import type { BankData, BankAnalysis, IndicatorKey, IndicatorResult, KnockoutLevel, ParametroIndicador } from '@/types';
+import { INDICATORS, classifyIndicator, classifyIndicatorWithValue, getQualityScore, formatIndicatorValue } from './indicators';
 
 /**
  * Computes the full analysis for a single bank.
@@ -12,17 +8,33 @@ export function analyzeBank(
   bank: BankData,
   weights: Record<IndicatorKey, number>,
   knockouts: Record<IndicatorKey, KnockoutLevel>,
+  parameters?: Record<IndicatorKey, ParametroIndicador>,
 ): BankAnalysis {
   // 1. Classify each indicator
   const indicators: Record<string, IndicatorResult> = {};
   
   for (const ind of INDICATORS) {
-    const rating = classifyIndicator(ind.key, bank);
+    const value = (bank as unknown as Record<string, unknown>)[ind.key] as number;
+    const param = parameters?.[ind.key];
+    
+    let rating;
+    if (param) {
+      rating = classifyIndicatorWithValue(
+        param.direction,
+        value,
+        param.limite_muito_bom,
+        param.limite_bom,
+        param.limite_moderado
+      );
+    } else {
+      rating = classifyIndicator(ind.key, bank);
+    }
+
     const score = getQualityScore(rating);
     const displayValue = formatIndicatorValue(ind.key, bank);
     
     indicators[ind.key] = {
-      value: ind.key === 'rating' ? bank.rating : ind.key === 'fgc' ? bank.fgc : (bank as unknown as Record<string, unknown>)[ind.key] as number,
+      value,
       rating,
       score,
       displayValue,
@@ -77,9 +89,10 @@ export function analyzeAllBanks(
   banks: BankData[],
   weights: Record<IndicatorKey, number>,
   knockouts: Record<IndicatorKey, KnockoutLevel>,
+  parameters?: Record<IndicatorKey, ParametroIndicador>,
 ): BankAnalysis[] {
   return banks
-    .map(bank => analyzeBank(bank, weights, knockouts))
+    .map(bank => analyzeBank(bank, weights, knockouts, parameters))
     .sort((a, b) => {
       // Knocked out banks go to the bottom
       if (a.isKnockedOut && !b.isKnockedOut) return 1;

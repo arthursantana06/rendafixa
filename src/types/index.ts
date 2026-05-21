@@ -4,7 +4,7 @@
 
 export type QualityRating = 'muito_bom' | 'bom' | 'moderado' | 'ruim';
 
-export type IndicatorKey = 'ib' | 'cet1' | 'ii' | 'icp' | 'roe' | 'roa' | 'ie' | 'lcr' | 'rating' | 'fgc';
+export type IndicatorKey = 'ib' | 'cet1' | 'ii' | 'icp' | 'roe' | 'roa';
 
 export interface IndicatorConfig {
   key: IndicatorKey;
@@ -17,6 +17,16 @@ export interface IndicatorConfig {
   criteria: Partial<Record<QualityRating, string>>;
 }
 
+export interface ParametroIndicador {
+  key: IndicatorKey;
+  label: string;
+  direction: 'higher_is_better' | 'lower_is_better';
+  limite_muito_bom: number;
+  limite_bom: number;
+  limite_moderado: number;
+}
+
+
 export interface BankData {
   id: string;
   name: string;
@@ -27,10 +37,19 @@ export interface BankData {
   icp: number;
   roe: number;
   roa: number;
-  ie: number;
-  lcr: number;
   rating: string;
   fgc: 'coberto_250k' | 'coberto_1m' | 'nao_coberto';
+  ativo_total?: number;
+  patrimonio_liquido?: number;
+  lucro_liquido?: number;
+  carteira_credito?: number;
+  segmento?: string;
+  razao_alavancagem?: number;
+  pcld?: number;
+  total_depositos?: number;
+  captacoes_totais?: number;
+  atraso_total?: number;
+  ldr?: number;
 }
 
 export interface WeightConfig {
@@ -66,6 +85,5 @@ export interface SortConfig {
   direction: SortDirection;
 }
 
-/** Page-level tabs for the Renda Fixa platform */
-export type MainTab = 'emissor'; // Future expansion: 'fundos', 'credito_privado', etc.
+export type MainTab = 'emissor' | 'titulos' | 'carteiras' | 'mercado';
 export type SubTab = 'analise' | 'metodologia' | 'extracao';
