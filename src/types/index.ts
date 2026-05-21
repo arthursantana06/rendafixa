@@ -26,35 +26,44 @@ export interface ParametroIndicador {
   limite_moderado: number;
   description?: string;
   source?: string;
+  col_planilha?: string;
 }
 
+
+export type DimensionKey = 'capital' | 'liquidez' | 'qualidade_carteira' | 'resultado' | 'porte' | 'outros';
+
+export interface DimensionConfig {
+  key: DimensionKey;
+  label: string;
+  indicators: string[];
+}
 
 export interface BankData {
   id: string;
   name: string;
   cnpj: string;
-  ib: number;
-  cet1: number;
-  ii: number;
-  icp: number;
-  roe: number;
-  roa: number;
+  ib: number | null;
+  cet1: number | null;
+  ii: number | null;
+  icp: number | null;
+  roe: number | null;
+  roa: number | null;
   rating: string;
   fgc: 'coberto_250k' | 'coberto_1m' | 'nao_coberto';
-  ativo_total?: number;
-  patrimonio_liquido?: number;
-  lucro_liquido?: number;
-  carteira_credito?: number;
+  ativo_total?: number | null;
+  patrimonio_liquido?: number | null;
+  lucro_liquido?: number | null;
+  carteira_credito?: number | null;
   segmento?: string;
-  razao_alavancagem?: number;
-  deposito_vista_funding?: number;
-  pcld?: number;
-  total_depositos?: number;
-  captacoes_totais?: number;
-  atraso_total?: number;
-  ldr?: number;
-  ie?: number;
-  lcr?: number;
+  razao_alavancagem?: number | null;
+  deposito_vista_funding?: number | null;
+  pcld?: number | null;
+  total_depositos?: number | null;
+  captacoes_totais?: number | null;
+  atraso_total?: number | null;
+  ldr?: number | null;
+  ie?: number | null;
+  lcr?: number | null;
 }
 
 export interface WeightConfig {

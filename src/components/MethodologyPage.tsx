@@ -298,7 +298,7 @@ function VisualIntervalBar({ direction, muitoBom, bom, moderado, unit }: VisualI
 interface IndicatorEditorialBlockProps {
   indicator: IndicatorConfig;
   parameter?: ParametroIndicador;
-  onUpdate: (key: IndicatorKey, updates: Partial<ParametroIndicador>) => void;
+  onUpdate: (key: IndicatorKey, updates: Partial<ParametroIndicador> & { newKey?: string }) => void;
 }
 
 function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEditorialBlockProps) {
@@ -306,6 +306,14 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
   const [muitoBom, setMuitoBom] = useState('');
   const [bom, setBom] = useState('');
   const [moderado, setModerado] = useState('');
+  
+  // Metadata state
+  const [label, setLabel] = useState('');
+  const [newKey, setNewKey] = useState('');
+  const [description, setDescription] = useState('');
+  const [source, setSource] = useState('');
+  const [colPlanilha, setColPlanilha] = useState('');
+
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
@@ -313,8 +321,19 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
       setMuitoBom(String(parameter.limite_muito_bom));
       setBom(String(parameter.limite_bom));
       setModerado(String(parameter.limite_moderado));
+      setLabel(parameter.label || indicator.label);
+      setNewKey(parameter.key || indicator.key);
+      setDescription(parameter.description || indicator.description || '');
+      setSource(parameter.source || indicator.source || '');
+      setColPlanilha(parameter.col_planilha || '');
+    } else {
+      setLabel(indicator.label);
+      setNewKey(indicator.key);
+      setDescription(indicator.description || '');
+      setSource(indicator.source || '');
+      setColPlanilha('');
     }
-  }, [parameter]);
+  }, [parameter, indicator]);
 
   const qualityLevels: { key: QualityRating; label: string }[] = [
     { key: 'muito_bom', label: 'Muito Bom' },
@@ -357,10 +376,15 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     onUpdate(indicator.key, {
+      newKey: newKey !== indicator.key ? newKey : undefined,
+      label,
+      description,
+      source,
+      col_planilha: colPlanilha,
       limite_muito_bom: Number(muitoBom),
       limite_bom: Number(bom),
       limite_moderado: Number(moderado),
-    });
+    } as any);
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
   };
@@ -373,10 +397,10 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
       >
         <div className="flex items-baseline gap-4">
           <h4 className="font-serif text-base font-bold text-foreground">
-            {indicator.label}
+            {label || indicator.label}
           </h4>
           <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-muted-foreground hidden sm:inline-block">
-            {indicator.shortLabel}
+            {newKey || indicator.shortLabel}
           </span>
         </div>
         {isOpen ? (
@@ -389,12 +413,12 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
       {isOpen && (
         <div className="px-5 pb-5 pt-3 border-t border-border/30 bg-muted/5">
           <p className="font-sans text-[11px] text-foreground/75 leading-relaxed mb-4 max-w-3xl">
-            {indicator.description}
+            {description || indicator.description}
           </p>
 
           <div className="mb-5 font-sans text-[9px] text-muted-foreground tracking-wide flex items-center gap-1.5 uppercase font-bold">
             <span>Fonte BACEN:</span>
-            <span className="font-serif italic normal-case font-normal">{indicator.source}</span>
+            <span className="font-serif italic normal-case font-normal">{source || indicator.source}</span>
             <span>—</span>
             <span className="normal-case font-normal">{indicator.sourceField}</span>
           </div>
@@ -404,7 +428,7 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
             {/* Left Column: Form parameter editor using math symbols */}
             <div className="lg:col-span-5 lg:border-r border-border/20 lg:pr-8 flex flex-col gap-4">
               <h5 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground">
-                Configuração de Limites
+                Configuração do Indicador
               </h5>
               
               {!parameter ? (
@@ -414,11 +438,63 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
               ) : (
                 <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
                   {/* Direction Badge */}
-                  <div className="flex items-center justify-between font-sans text-[9px] uppercase tracking-wider text-muted-foreground bg-muted/40 p-2 border border-border/30 rounded-sm">
+                  <div className="flex items-center justify-between font-sans text-[9px] uppercase tracking-wider text-muted-foreground bg-muted/40 p-2 border border-border/30 rounded-sm mb-2">
                     <span className="font-bold">Direção da Nota:</span>
                     <span className="font-black text-foreground">
                       {parameter.direction === 'higher_is_better' ? 'Maior é Melhor (↑)' : 'Menor é Melhor (↓)'}
                     </span>
+                  </div>
+
+                  {/* Metadata Input Fields */}
+                  <div className="flex flex-col gap-3.5 font-sans text-xs border-b border-border/20 pb-4 mb-2">
+                    <div className="flex flex-col gap-1">
+                      <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                        Nome do Indicador
+                      </label>
+                      <input
+                        type="text"
+                        value={label}
+                        onChange={(e) => setLabel(e.target.value)}
+                        className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground"
+                      />
+                    </div>
+                    
+                    <div className="flex flex-col gap-1">
+                      <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                        Código/Coluna na Planilha
+                      </label>
+                      <input
+                        type="text"
+                        value={colPlanilha}
+                        onChange={(e) => setColPlanilha(e.target.value)}
+                        placeholder={indicator.key}
+                        className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground font-mono"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                        Fonte do Dado
+                      </label>
+                      <input
+                        type="text"
+                        value={source}
+                        onChange={(e) => setSource(e.target.value)}
+                        className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                        Descrição Detalhada
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground resize-none"
+                      />
+                    </div>
                   </div>
 
                   {/* Math Formula Blocks */}

@@ -2,11 +2,57 @@
 // INDICATOR CONFIGURATION & CLASSIFICATION RULES
 // Baseado no documento: Critérios de Análise de Emissor
 // Fonte: HFC Consultoria - Metodologia Proprietária
-// ============================================================
-
-import type { IndicatorKey, IndicatorConfig, QualityRating, BankData } from '@/types';
+// ===========================================================import type { IndicatorKey, IndicatorConfig, QualityRating, BankData, DimensionKey, DimensionConfig } from '@/types';
 
 // ============================================================
+// DIMENSION / GROUP DEFINITIONS
+// ============================================================
+export const DIMENSIONS: DimensionConfig[] = [
+  {
+    key: 'capital',
+    label: 'Indicadores de Capital',
+    indicators: ['ib', 'cet1', 'razao_alavancagem']
+  },
+  {
+    key: 'liquidez',
+    label: 'Indicadores de Liquidez',
+    indicators: ['lcr']
+  },
+  {
+    key: 'qualidade_carteira',
+    label: 'Qualidade da Carteira',
+    indicators: ['ii', 'icp', 'deposito_vista_funding']
+  },
+  {
+    key: 'resultado',
+    label: 'Indicadores de Resultado',
+    indicators: ['roe', 'roa', 'ie']
+  },
+  {
+    key: 'porte',
+    label: 'Indicadores de Porte',
+    indicators: ['ativo_total', 'carteira_credito']
+  }
+];
+
+export function getDimensions(indicatorsList: IndicatorConfig[]): DimensionConfig[] {
+  const standardKeys = new Set(DIMENSIONS.flatMap(d => d.indicators));
+  const customKeys = indicatorsList.map(i => i.key).filter(k => !standardKeys.has(k));
+  
+  if (customKeys.length === 0) {
+    return DIMENSIONS;
+  }
+  
+  return [
+    ...DIMENSIONS,
+    {
+      key: 'outros',
+      label: 'Outros Indicadores',
+      indicators: customKeys
+    }
+  ];
+}
+
 // Indicator metadata - com descrições detalhadas do PDF
 // ============================================================
 export const INDICATORS: IndicatorConfig[] = [
@@ -104,7 +150,7 @@ export const INDICATORS: IndicatorConfig[] = [
     key: 'razao_alavancagem',
     label: 'Razão de Alavancagem (Bacen)',
     shortLabel: 'RA',
-    description: 'Mede o grau de alavancagem sem ponderação pelo risco. Bancos com índices acima de 8% possuem uma folga de capital gigantesca frente às suas exposições. Abaixo de 4%, o banco está perigosamente perto do limite regulatório do Bacen (3%), indicando uma operação altamente esticada.',
+    description: 'Mede o grau de alavancagem sem ponderação pelo risco. Bancos com índices acima de 8% possuem uma folga de capital gigantesca frente às suas exposições. Abaixo de 4%, o banco está perigosamente perto do limite regulatório do Bacen (3%), indicando uma operation altamente esticada.',
     unit: '%',
     source: 'IF.data > Prudencial > Alavancagem',
     sourceField: 'Razão de Alavancagem (%)',
@@ -282,14 +328,14 @@ export function getQualityDotColor(rating: QualityRating): string {
 
 export function formatIndicatorValue(key: string, bank: BankData): string {
   const value = (bank as any)[key];
-  if (value === undefined || value === null) return 'N/I';
+  if (value === undefined || value === null || value === '') return '';
   switch (key) {
-    case 'ib': return `${Number(bank.ib).toFixed(1)}%`;
-    case 'cet1': return `${Number(bank.cet1).toFixed(1)}%`;
-    case 'ii': return `${Number(bank.ii).toFixed(1)}%`;
-    case 'icp': return `${Number(bank.icp).toFixed(1)}%`;
-    case 'roe': return `${Number(bank.roe).toFixed(1)}%`;
-    case 'roa': return `${Number(bank.roa).toFixed(2)}%`;
+    case 'ib': return `${Number(value).toFixed(1)}%`;
+    case 'cet1': return `${Number(value).toFixed(1)}%`;
+    case 'ii': return `${Number(value).toFixed(1)}%`;
+    case 'icp': return `${Number(value).toFixed(1)}%`;
+    case 'roe': return `${Number(value).toFixed(1)}%`;
+    case 'roa': return `${Number(value).toFixed(2)}%`;
     case 'razao_alavancagem': return `${Number(value).toFixed(2)}%`;
     case 'deposito_vista_funding': return `${Number(value).toFixed(2)}%`;
     case 'ativo_total': return `R$ ${Number(value).toFixed(1)} Bi`;
@@ -300,24 +346,18 @@ export function formatIndicatorValue(key: string, bank: BankData): string {
   }
 }
 
-export function getDefaultWeights(): Record<IndicatorKey, number> {
+export function getDefaultWeights(): Record<string, number> {
   return {
-    ib: 10.0,
-    cet1: 10.0,
-    ii: 10.0,
-    icp: 10.0,
-    roe: 10.0,
-    roa: 10.0,
-    razao_alavancagem: 10.0,
-    deposito_vista_funding: 10.0,
-    ativo_total: 10.0,
-    carteira_credito: 10.0,
-    ie: 10.0,
-    lcr: 10.0
+    capital: 20.0,
+    liquidez: 20.0,
+    qualidade_carteira: 20.0,
+    resultado: 20.0,
+    porte: 20.0,
+    outros: 0.0
   };
 }
 
-export function getDefaultKnockouts(): Record<IndicatorKey, 'none' | 'ruim' | 'moderado'> {
+export function getDefaultKnockouts(): Record<string, 'none' | 'ruim' | 'moderado'> {
   return {
     ib: 'none',
     cet1: 'none',

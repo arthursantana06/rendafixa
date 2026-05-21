@@ -183,7 +183,22 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
             log('SUCCESS', `Parser concluído. Encontrados ${rows.length} registros no CSV.`);
             await sleep(150);
 
-            log('INFO', 'Iniciando mapeamento de cabeçalhos para os 6 indicadores de risco...');
+            log('INFO', 'Consultando base de parâmetros cadastrados no banco de dados (Supabase)...');
+            await sleep(150);
+
+            const { data: dbParams, error: dbError } = await supabase
+              .from('parametros_indicadores')
+              .select('key, label, col_planilha');
+
+            const dbParamsMap = new Map<string, { key: string; label: string; col_planilha?: string }>();
+            if (dbError) {
+              log('WARNING', `Não foi possível carregar parâmetros do banco: ${dbError.message}`);
+            } else if (dbParams) {
+              dbParams.forEach(p => dbParamsMap.set(p.key, p));
+              log('SUCCESS', `Parâmetros carregados com sucesso. Encontrados ${dbParams.length} indicadores.`);
+            }
+
+            log('INFO', 'Iniciando mapeamento de cabeçalhos para todos os dados e indicadores regulatórios do BACEN...');
             await sleep(150);
 
             const sample = rows[0];
@@ -194,55 +209,40 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
               throw new Error('Chaves primárias ausentes. O CSV deve conter "Código" e "Instituição".');
             }
 
+            const getColsFor = (key: string, defaults: string[]) => {
+              const param = dbParamsMap.get(key);
+              if (param?.col_planilha) {
+                return [param.col_planilha, ...defaults];
+              }
+              return defaults;
+            };
+
             // Check each indicator column presence in CSV
             const indicatorsMap = [
-              { key: 'ib', label: 'Basileia', cols: ['Indice_Basileia (%)', 'Indice_Basileia', 'ib'] },
-              { key: 'cet1', label: 'CET1', cols: ['Capital_Principal_CET1 (%)', 'Capital_Principal_CET1', 'cet1'] },
-              { key: 'ii', label: 'Inadimplência', cols: ['Indice_Inadimplencia_II (%)', 'Indice_Inadimplencia_II', 'ii'] },
-              { key: 'icp', label: 'Cobertura', cols: ['ICP_Cobertura (%)', 'ICP_Cobertura', 'icp'] },
-              { key: 'roe', label: 'ROE', cols: ['ROE_Calculado (%)', 'ROE_Calculado', 'roe'] },
-              { key: 'roa', label: 'ROA', cols: ['ROA_Calculado (%)', 'ROA_Calculado', 'roa'] },
-              { key: 'razao_alavancagem', label: 'Razão de Alavancagem', cols: ['Razao_Alavancagem (%)', 'Razao_Alavancagem', 'razao_alavancagem'] },
-              { key: 'deposito_vista_funding', label: 'Depósito à Vista / Funding', cols: ['Deposito_Vista_vs_Funding (%)', 'Deposito_Vista_vs_Funding', 'deposito_vista_funding'] },
-              { key: 'ativo_total', label: 'Ativo Total', cols: ['Ativo Total', 'ativo_total'] },
-              { key: 'carteira_credito', label: 'Carteira de Crédito', cols: ['Carteira de Crédito Total', 'carteira_credito_total', 'carteira_credito'] },
-              { key: 'ie', label: 'Índice de Eficiência', cols: ['Indice_Eficiencia (%)', 'Indice_Eficiencia', 'ie', 'Índice de Eficiência', 'Indice de Eficiencia (%)'] },
-              { key: 'lcr', label: 'LCR (Liquidez Curto Prazo)', cols: ['LCR - Índice de Liquidez de Curto Prazo (%)', 'LCR_Indice_Liquidez_Curto_Prazo (%)', 'lcr', 'LCR', 'LCR (%)'] },
+              { key: 'ib', label: 'Basileia', cols: getColsFor('ib', ['Indice_Basileia (%)', 'Indice_Basileia', 'ib']) },
+              { key: 'cet1', label: 'CET1', cols: getColsFor('cet1', ['Capital_Principal_CET1 (%)', 'Capital_Principal_CET1', 'cet1']) },
+              { key: 'ii', label: 'Inadimplência', cols: getColsFor('ii', ['Indice_Inadimplencia_II (%)', 'Indice_Inadimplencia_II', 'ii']) },
+              { key: 'icp', label: 'Cobertura', cols: getColsFor('icp', ['ICP_Cobertura (%)', 'ICP_Cobertura', 'icp']) },
+              { key: 'roe', label: 'ROE', cols: getColsFor('roe', ['ROE_Calculado (%)', 'ROE_Calculado', 'roe']) },
+              { key: 'roa', label: 'ROA', cols: getColsFor('roa', ['ROA_Calculado (%)', 'ROA_Calculado', 'roa']) },
+              { key: 'razao_alavancagem', label: 'Razão de Alavancagem', cols: getColsFor('razao_alavancagem', ['Razao_Alavancagem (%)', 'Razao_Alavancagem', 'razao_alavancagem']) },
+              { key: 'deposito_vista_funding', label: 'Depósito à Vista / Funding', cols: getColsFor('deposito_vista_funding', ['Deposito_Vista_vs_Funding (%)', 'Deposito_Vista_vs_Funding', 'deposito_vista_funding']) },
+              { key: 'ativo_total', label: 'Ativo Total', cols: getColsFor('ativo_total', ['Ativo Total', 'ativo_total']) },
+              { key: 'carteira_credito', label: 'Carteira de Crédito', cols: getColsFor('carteira_credito', ['Carteira de Crédito Total', 'carteira_credito_total', 'carteira_credito']) },
+              { key: 'ie', label: 'Índice de Eficiência', cols: getColsFor('ie', ['Indice_Eficiencia (%)', 'Indice_Eficiencia', 'ie', 'Índice de Eficiência', 'Indice de Eficiencia (%)']) },
+              { key: 'lcr', label: 'LCR (Liquidez Curto Prazo)', cols: getColsFor('lcr', ['LCR - Índice de Liquidez de Curto Prazo (%)', 'LCR_Indice_Liquidez_Curto_Prazo (%)', 'lcr', 'LCR', 'LCR (%)']) },
             ];
 
+            const resolvedCols: Record<string, string> = {};
             for (const ind of indicatorsMap) {
               const foundCol = ind.cols.find(c => c in sample);
               if (foundCol) {
+                resolvedCols[ind.key] = foundCol;
                 log('SUCCESS', `Mapeamento OK: Indicador '${ind.label}' associado à coluna '${foundCol}'.`);
               } else {
                 log('WARNING', `Atenção: Indicador '${ind.label}' não foi encontrado em nenhuma das colunas esperadas.`);
               }
               await sleep(80);
-            }
-
-            log('INFO', 'Consultando base de parâmetros cadastrados no banco de dados (Supabase)...');
-            await sleep(150);
-
-            // Compare with Supabase indicators parameter database
-            const { data: dbParams, error: dbError } = await supabase
-              .from('parametros_indicadores')
-              .select('key, label');
-
-            if (dbError) {
-              log('WARNING', `Não foi possível validar os parâmetros no banco de dados: ${dbError.message}`);
-            } else {
-              const dbKeys = new Set((dbParams || []).map(p => p.key));
-              log('SUCCESS', `Conexão Supabase OK. Encontrados ${dbParams?.length || 0} indicadores parametrizados no banco.`);
-              await sleep(100);
-
-              for (const ind of indicatorsMap) {
-                if (dbKeys.has(ind.key)) {
-                  log('SUCCESS', `Sincronização OK: Indicador '${ind.label}' possui regras cadastradas no banco.`);
-                } else {
-                  log('WARNING', `Alerta de Inconsistência: Indicador '${ind.label}' está ausente nas regras de parâmetros no banco!`);
-                }
-                await sleep(80);
-              }
             }
 
             log('INFO', 'Iniciando normalização de dados e tratamento de decodificação binária dupla...');
@@ -256,26 +256,26 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
                 codigo,
                 nome: fixDoubleUtf8(String(row['Instituição'] || row['instituicao'] || 'N/I').trim()),
                 cnpj: String(row['CNPJ'] || row['cnpj'] || codigo).trim(),
-                ativo_total: parseNumber(row['Ativo Total'] || row['ativo_total']) / 1000000,
+                ativo_total: parseNumber(row[resolvedCols['ativo_total']] ?? (row['Ativo Total'] || row['ativo_total'])),
                 patrimonio_liquido: parseNumber(row['Patrimônio Líquido'] || row['patrimonio_liquido']),
                 lucro_liquido: parseNumber(row['Lucro Líquido'] || row['lucro_liquido']),
-                carteira_credito: parseNumber(row['Carteira de Crédito Total'] || row['carteira_credito_total'] || row['Carteira de Crédito']) / 1000000,
+                carteira_credito: parseNumber(row[resolvedCols['carteira_credito']] ?? (row['Carteira de Crédito Total'] || row['carteira_credito_total'] || row['Carteira de Crédito'])),
                 segmento: String(row['Segmento_Prudencial'] || row['segmento_prudencial'] || 'S/S').trim(),
-                ib: parseNumber(row['Indice_Basileia (%)'] || row['Indice_Basileia'] || row['ib']),
-                cet1: parseNumber(row['Capital_Principal_CET1 (%)'] || row['Capital_Principal_CET1'] || row['cet1']),
-                razao_alavancagem: parseNumber(row['Razao_Alavancagem (%)'] || row['Razao_Alavancagem']),
-                deposito_vista_funding: parseNumber(row['Deposito_Vista_vs_Funding (%)'] || row['Deposito_Vista_vs_Funding'] || row['deposito_vista_funding']),
+                ib: parseNumber(row[resolvedCols['ib']] ?? (row['Indice_Basileia (%)'] || row['Indice_Basileia'] || row['ib'])),
+                cet1: parseNumber(row[resolvedCols['cet1']] ?? (row['Capital_Principal_CET1 (%)'] || row['Capital_Principal_CET1'] || row['cet1'])),
+                razao_alavancagem: parseNumber(row[resolvedCols['razao_alavancagem']] ?? (row['Razao_Alavancagem (%)'] || row['Razao_Alavancagem'])),
+                deposito_vista_funding: parseNumber(row[resolvedCols['deposito_vista_funding']] ?? (row['Deposito_Vista_vs_Funding (%)'] || row['Deposito_Vista_vs_Funding'] || row['deposito_vista_funding'])),
                 pcld: parseNumber(row['PCLD_Saldo'] || row['pcld_saldo'] || row['pcld']),
                 total_depositos: parseNumber(row['Total_Depositos'] || row['total_depositos']),
                 captacoes_totais: parseNumber(row['Captacoes_Totais'] || row['captacoes_totais']),
                 atraso_total: parseNumber(row['Atraso_Total'] || row['atraso_total']),
                 ldr: parseNumber(row['LDR (%)'] || row['ldr']),
-                ii: parseNumber(row['Indice_Inadimplencia_II (%)'] || row['Indice_Inadimplencia_II'] || row['ii']),
-                icp: parseNumber(row['ICP_Cobertura (%)'] || row['ICP_Cobertura'] || row['icp']),
-                roe: parseNumber(row['ROE_Calculado (%)'] || row['ROE_Calculado'] || row['roe']),
-                roa: parseNumber(row['ROA_Calculado (%)'] || row['ROA_Calculado'] || row['roa']),
-                ie: parseNumber(row['Indice_Eficiencia (%)'] || row['Indice_Eficiencia'] || row['ie'] || row['Índice de Eficiência'] || row['Indice de Eficiencia (%)']),
-                lcr: parseNumber(row['LCR - Índice de Liquidez de Curto Prazo (%)'] || row['LCR_Indice_Liquidez_Curto_Prazo (%)'] || row['lcr'] || row['LCR'] || row['LCR (%)']),
+                ii: parseNumber(row[resolvedCols['ii']] ?? (row['Indice_Inadimplencia_II (%)'] || row['Indice_Inadimplencia_II'] || row['ii'])),
+                icp: parseNumber(row[resolvedCols['icp']] ?? (row['ICP_Cobertura (%)'] || row['ICP_Cobertura'] || row['icp'])),
+                roe: parseNumber(row[resolvedCols['roe']] ?? (row['ROE_Calculado (%)'] || row['ROE_Calculado'] || row['roe'])),
+                roa: parseNumber(row[resolvedCols['roa']] ?? (row['ROA_Calculado (%)'] || row['ROA_Calculado'] || row['roa'])),
+                ie: parseNumber(row[resolvedCols['ie']] ?? (row['Indice_Eficiencia (%)'] || row['Indice_Eficiencia'] || row['ie'] || row['Índice de Eficiência'] || row['Indice de Eficiencia (%)'])),
+                lcr: parseNumber(row[resolvedCols['lcr']] ?? (row['LCR - Índice de Liquidez de Curto Prazo (%)'] || row['LCR_Indice_Liquidez_Curto_Prazo (%)'] || row['lcr'] || row['LCR'] || row['LCR (%)'])),
                 rating: 'SR',
                 fgc: 'coberto_250k'
               };
@@ -344,7 +344,7 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
           Carga de Dados
         </h2>
         <p className="font-serif text-sm italic text-muted-foreground leading-relaxed mb-4">
-          Importe o scorecard consolidado para popular o banco de dados centralizado. O sistema processará todas as métricas financeiras dos emissores em conformidade com as regras prudenciais.
+          Importe o scorecard consolidado para popular o banco de dados centralizado. O sistema realiza a extração completa e a consolidação de todos os dados regulatórios necessários do BACEN — e não apenas de 6 indicadores isolados — processando de forma integrada o balanço patrimonial, dados prudenciais e indicadores de risco dos emissores.
         </p>
         
         <div className="flex items-center gap-2 font-sans text-[10px] font-bold uppercase tracking-widest text-foreground bg-muted/40 inline-flex px-3 py-1.5 border border-border/50">

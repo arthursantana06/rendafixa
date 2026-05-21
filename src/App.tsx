@@ -44,35 +44,38 @@ function App() {
     try {
       const { data, error } = await supabase.from('emissores_bancarios').select('*');
       if (!error && data) {
-        const mappedBanks = data.map(row => ({
-          id: row.codigo,
-          name: row.nome || 'N/I',
-          cnpj: row.cnpj || row.codigo,
-          ib: row.ib ? Number(row.ib) : 0,
-          cet1: row.cet1 ? Number(row.cet1) : 0,
-          ii: row.ii ? Number(row.ii) : 0,
-          icp: row.icp ? Number(row.icp) : 0,
-          roe: row.roe ? Number(row.roe) : 0,
-          roa: row.roa ? Number(row.roa) : 0,
-          rating: row.rating || 'SR',
-          fgc: row.fgc || 'nao_coberto',
-          
-          // Metadata fields
-          ativo_total: row.ativo_total ? Number(row.ativo_total) : 0,
-          patrimonio_liquido: row.patrimonio_liquido ? Number(row.patrimonio_liquido) : 0,
-          lucro_liquido: row.lucro_liquido ? Number(row.lucro_liquido) : 0,
-          carteira_credito: row.carteira_credito ? Number(row.carteira_credito) : 0,
-          segmento: row.segmento || 'S/S',
-          razao_alavancagem: row.razao_alavancagem ? Number(row.razao_alavancagem) : 0,
-          deposito_vista_funding: row.deposito_vista_funding ? Number(row.deposito_vista_funding) : 0,
-          pcld: row.pcld ? Number(row.pcld) : 0,
-          total_depositos: row.total_depositos ? Number(row.total_depositos) : 0,
-          captacoes_totais: row.captacoes_totais ? Number(row.captacoes_totais) : 0,
-          atraso_total: row.atraso_total ? Number(row.atraso_total) : 0,
-          ldr: row.ldr ? Number(row.ldr) : 0,
-          ie: row.ie ? Number(row.ie) : 0,
-          lcr: row.lcr ? Number(row.lcr) : 0,
-        })) as BankData[];
+        const mappedBanks = data.map(row => {
+          const mapVal = (v: any) => (v !== undefined && v !== null && v !== '') ? Number(v) : null;
+          return {
+            id: row.codigo,
+            name: row.nome || 'N/I',
+            cnpj: row.cnpj || row.codigo,
+            ib: mapVal(row.ib),
+            cet1: mapVal(row.cet1),
+            ii: mapVal(row.ii),
+            icp: mapVal(row.icp),
+            roe: mapVal(row.roe),
+            roa: mapVal(row.roa),
+            rating: row.rating || 'SR',
+            fgc: row.fgc || 'nao_coberto',
+            
+            // Metadata fields
+            ativo_total: row.ativo_total !== undefined && row.ativo_total !== null && row.ativo_total !== '' ? Number(row.ativo_total) / 1000000 : null,
+            patrimonio_liquido: mapVal(row.patrimonio_liquido),
+            lucro_liquido: mapVal(row.lucro_liquido),
+            carteira_credito: row.carteira_credito !== undefined && row.carteira_credito !== null && row.carteira_credito !== '' ? Number(row.carteira_credito) / 1000000 : null,
+            segmento: row.segmento || 'S/S',
+            razao_alavancagem: mapVal(row.razao_alavancagem),
+            deposito_vista_funding: mapVal(row.deposito_vista_funding),
+            pcld: mapVal(row.pcld),
+            total_depositos: mapVal(row.total_depositos),
+            captacoes_totais: mapVal(row.captacoes_totais),
+            atraso_total: mapVal(row.atraso_total),
+            ldr: mapVal(row.ldr),
+            ie: mapVal(row.ie),
+            lcr: mapVal(row.lcr),
+          };
+        }) as BankData[];
         setBanks(mappedBanks);
       }
     } catch (e) {
@@ -105,6 +108,7 @@ function App() {
           limite_moderado: Number(row.limite_moderado),
           description: row.description || undefined,
           source: row.source || undefined,
+          col_planilha: row.col_planilha || undefined,
         };
         return acc;
       }, {} as Record<IndicatorKey, ParametroIndicador>);
@@ -190,32 +194,47 @@ function App() {
     await fetchParameters();
   }, [fetchParameters]);
 
-  const handleUpdateParameter = useCallback(async (key: IndicatorKey, updates: Partial<ParametroIndicador>) => {
+  const handleUpdateParameter = useCallback(async (key: IndicatorKey, updates: Partial<ParametroIndicador> & { newKey?: string }) => {
+    const targetKey = updates.newKey || key;
+    
     // 1. Optimistic update
     setParameters(prev => {
       if (!prev) return prev;
-      return {
-        ...prev,
-        [key]: {
-          ...prev[key],
-          ...updates
-        }
-      };
+      const copy = { ...prev };
+      const current = copy[key];
+      if (updates.newKey) {
+        delete copy[key];
+      }
+      copy[targetKey] = {
+        ...current,
+        ...updates,
+        key: targetKey
+      } as ParametroIndicador;
+      return copy;
     });
 
     // 2. Supabase update
+    const dbUpdates: any = {
+      limite_muito_bom: updates.limite_muito_bom,
+      limite_bom: updates.limite_bom,
+      limite_moderado: updates.limite_moderado,
+    };
+    if (updates.newKey) dbUpdates.key = updates.newKey;
+    if (updates.label !== undefined) dbUpdates.label = updates.label;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.source !== undefined) dbUpdates.source = updates.source;
+    if (updates.col_planilha !== undefined) dbUpdates.col_planilha = updates.col_planilha;
+
     const { error } = await supabase
       .from('parametros_indicadores')
-      .update({
-        limite_muito_bom: updates.limite_muito_bom,
-        limite_bom: updates.limite_bom,
-        limite_moderado: updates.limite_moderado,
-      })
+      .update(dbUpdates)
       .eq('key', key);
 
     if (error) {
       console.error('Failed to update parameter in Supabase:', error);
       fetchParameters();
+    } else {
+      await fetchParameters();
     }
   }, [fetchParameters]);
 

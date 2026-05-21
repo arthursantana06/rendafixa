@@ -4,14 +4,14 @@
 
 import { useState } from 'react';
 import { Slider } from '@/components/ui/slider';
-import { INDICATORS } from '@/lib/indicators';
+import { INDICATORS, getDimensions } from '@/lib/indicators';
 import type { IndicatorKey, KnockoutLevel, IndicatorConfig } from '@/types';
 import { AlertTriangle, RotateCcw, ChevronDown } from 'lucide-react';
 
 interface ConfigPanelProps {
-  weights: Record<IndicatorKey, number>;
+  weights: Record<string, number>;
   knockouts: Record<IndicatorKey, KnockoutLevel>;
-  onWeightChange: (key: IndicatorKey, value: number) => void;
+  onWeightChange: (key: string, value: number) => void;
   onKnockoutChange: (key: IndicatorKey, level: KnockoutLevel) => void;
   onResetWeights: () => void;
   isOpen: boolean;
@@ -34,6 +34,8 @@ export function ConfigPanel({
   const totalWeight = Object.values(weights).reduce((sum, w) => sum + w, 0);
   const isWeightValid = Math.abs(totalWeight - 100) < 0.5;
 
+  const dims = getDimensions(indicators);
+
   if (!isOpen) return null;
 
   return (
@@ -49,7 +51,7 @@ export function ConfigPanel({
                 activeTab === 'weights' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Pesos dos Indicadores
+              Pesos das Dimensões
             </button>
             <button
               onClick={() => setActiveTab('knockouts')}
@@ -88,29 +90,36 @@ export function ConfigPanel({
         {/* Weights Tab */}
         {activeTab === 'weights' && (
           <div className={compact ? "grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-6" : "grid grid-cols-2 lg:grid-cols-5 gap-x-12 gap-y-10"}>
-            {indicators.map((ind) => (
-              <div key={ind.key} className="flex flex-col gap-2">
-                <div className="flex items-end justify-between">
-                  <label className="font-sans text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                    {ind.shortLabel}
-                  </label>
-                  <span className="font-serif text-xl font-bold text-foreground">
-                    {weights[ind.key] || 0}<span className="text-sm text-muted-foreground ml-0.5">%</span>
-                  </span>
+            {dims.map((dim) => {
+              const childLabels = dim.indicators.map(key => {
+                const ind = indicators.find(i => i.key === key);
+                return ind ? ind.shortLabel : key.toUpperCase();
+              }).join(', ');
+
+              return (
+                <div key={dim.key} className="flex flex-col gap-2">
+                  <div className="flex items-end justify-between">
+                    <label className="font-sans text-xs font-bold uppercase tracking-widest text-muted-foreground line-clamp-1" title={dim.label}>
+                      {dim.label}
+                    </label>
+                    <span className="font-serif text-xl font-bold text-foreground">
+                      {weights[dim.key] || 0}<span className="text-sm text-muted-foreground ml-0.5">%</span>
+                    </span>
+                  </div>
+                  <Slider
+                    value={[weights[dim.key] || 0]}
+                    onValueChange={(v) => onWeightChange(dim.key, v[0])}
+                    max={100}
+                    min={0}
+                    step={1}
+                    className="py-2"
+                  />
+                  <p className="font-sans text-[10px] text-muted-foreground line-clamp-2" title={childLabels}>
+                    Componentes: {childLabels}
+                  </p>
                 </div>
-                <Slider
-                  value={[weights[ind.key] || 0]}
-                  onValueChange={(v) => onWeightChange(ind.key, v[0])}
-                  max={50}
-                  min={0}
-                  step={0.5}
-                  className="py-2"
-                />
-                <p className="font-serif text-xs italic text-muted-foreground line-clamp-1" title={ind.label}>
-                  {ind.label}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
