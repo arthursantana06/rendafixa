@@ -139,8 +139,9 @@ export function classifyIndicatorWithValue(
 // Main classification function
 // ============================================================
 
-export function classifyIndicator(key: IndicatorKey, bank: BankData): QualityRating {
-  const value = bank[key];
+export function classifyIndicator(key: string, bank: BankData): QualityRating {
+  const value = (bank as any)[key];
+  if (value === undefined || value === null) return 'moderado';
   switch (key) {
     case 'ib': return classifyIndicatorWithValue('higher_is_better', value, 15, 13, 11);
     case 'cet1': return classifyIndicatorWithValue('higher_is_better', value, 12, 10, 7);
@@ -148,6 +149,7 @@ export function classifyIndicator(key: IndicatorKey, bank: BankData): QualityRat
     case 'icp': return classifyIndicatorWithValue('higher_is_better', value, 150, 100, 80);
     case 'roe': return classifyIndicatorWithValue('higher_is_better', value, 15, 10, 5);
     case 'roa': return classifyIndicatorWithValue('higher_is_better', value, 1.5, 0.8, 0.3);
+    default: return 'moderado';
   }
 }
 
@@ -182,14 +184,17 @@ export function getQualityDotColor(rating: QualityRating): string {
   }
 }
 
-export function formatIndicatorValue(key: IndicatorKey, bank: BankData): string {
+export function formatIndicatorValue(key: string, bank: BankData): string {
+  const value = (bank as any)[key];
+  if (value === undefined || value === null) return 'N/I';
   switch (key) {
-    case 'ib': return `${bank.ib.toFixed(1)}%`;
-    case 'cet1': return `${bank.cet1.toFixed(1)}%`;
-    case 'ii': return `${bank.ii.toFixed(1)}%`;
-    case 'icp': return `${bank.icp.toFixed(1)}%`;
-    case 'roe': return `${bank.roe.toFixed(1)}%`;
-    case 'roa': return `${bank.roa.toFixed(2)}%`;
+    case 'ib': return `${Number(bank.ib).toFixed(1)}%`;
+    case 'cet1': return `${Number(bank.cet1).toFixed(1)}%`;
+    case 'ii': return `${Number(bank.ii).toFixed(1)}%`;
+    case 'icp': return `${Number(bank.icp).toFixed(1)}%`;
+    case 'roe': return `${Number(bank.roe).toFixed(1)}%`;
+    case 'roa': return `${Number(bank.roa).toFixed(2)}%`;
+    default: return `${Number(value).toFixed(1)}%`;
   }
 }
 

@@ -1,4 +1,4 @@
-import type { BankData, BankAnalysis, IndicatorKey, IndicatorResult, KnockoutLevel, ParametroIndicador } from '@/types';
+import type { BankData, BankAnalysis, IndicatorKey, IndicatorResult, KnockoutLevel, ParametroIndicador, IndicatorConfig } from '@/types';
 import { INDICATORS, classifyIndicator, classifyIndicatorWithValue, getQualityScore, formatIndicatorValue } from './indicators';
 
 /**
@@ -9,12 +9,14 @@ export function analyzeBank(
   weights: Record<IndicatorKey, number>,
   knockouts: Record<IndicatorKey, KnockoutLevel>,
   parameters?: Record<IndicatorKey, ParametroIndicador>,
+  indicatorsList: IndicatorConfig[] = INDICATORS,
 ): BankAnalysis {
   // 1. Classify each indicator
   const indicators: Record<string, IndicatorResult> = {};
   
-  for (const ind of INDICATORS) {
-    const value = (bank as unknown as Record<string, unknown>)[ind.key] as number;
+  for (const ind of indicatorsList) {
+    const rawVal = (bank as unknown as Record<string, unknown>)[ind.key];
+    const value = rawVal !== undefined && rawVal !== null ? Number(rawVal) : 0;
     const param = parameters?.[ind.key];
     
     let rating;
@@ -45,11 +47,12 @@ export function analyzeBank(
   const knockoutReasons: string[] = [];
   let isKnockedOut = false;
 
-  for (const ind of INDICATORS) {
+  for (const ind of indicatorsList) {
     const knockoutLevel = knockouts[ind.key];
-    if (knockoutLevel === 'none') continue;
+    if (knockoutLevel === 'none' || !knockoutLevel) continue;
 
-    const bankRating = indicators[ind.key].rating;
+    const bankRating = indicators[ind.key]?.rating;
+    if (!bankRating) continue;
     
     if (knockoutLevel === 'ruim' && bankRating === 'ruim') {
       isKnockedOut = true;
@@ -65,9 +68,10 @@ export function analyzeBank(
   const totalWeight = Object.values(weights).reduce((sum, w) => sum + w, 0);
 
   if (totalWeight > 0 && !isKnockedOut) {
-    for (const ind of INDICATORS) {
-      const weight = weights[ind.key] / totalWeight; // Normalize
-      const score = indicators[ind.key].score;
+    for (const ind of indicatorsList) {
+      const weightVal = weights[ind.key] || 0;
+      const weight = weightVal / totalWeight; // Normalize
+      const score = indicators[ind.key]?.score || 0;
       weightedScore += score * weight;
     }
   }
@@ -90,9 +94,10 @@ export function analyzeAllBanks(
   weights: Record<IndicatorKey, number>,
   knockouts: Record<IndicatorKey, KnockoutLevel>,
   parameters?: Record<IndicatorKey, ParametroIndicador>,
+  indicatorsList: IndicatorConfig[] = INDICATORS,
 ): BankAnalysis[] {
   return banks
-    .map(bank => analyzeBank(bank, weights, knockouts, parameters))
+    .map(bank => analyzeBank(bank, weights, knockouts, parameters, indicatorsList))
     .sort((a, b) => {
       // Knocked out banks go to the bottom
       if (a.isKnockedOut && !b.isKnockedOut) return 1;

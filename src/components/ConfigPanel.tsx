@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { INDICATORS } from '@/lib/indicators';
-import type { IndicatorKey, KnockoutLevel } from '@/types';
+import type { IndicatorKey, KnockoutLevel, IndicatorConfig } from '@/types';
 import { AlertTriangle, RotateCcw, ChevronDown } from 'lucide-react';
 
 interface ConfigPanelProps {
@@ -16,6 +16,7 @@ interface ConfigPanelProps {
   onResetWeights: () => void;
   isOpen: boolean;
   compact?: boolean;
+  indicators?: IndicatorConfig[];
 }
 
 export function ConfigPanel({
@@ -26,6 +27,7 @@ export function ConfigPanel({
   onResetWeights,
   isOpen,
   compact = false,
+  indicators = INDICATORS,
 }: ConfigPanelProps) {
   const [activeTab, setActiveTab] = useState<'weights' | 'knockouts'>('weights');
   
@@ -86,18 +88,18 @@ export function ConfigPanel({
         {/* Weights Tab */}
         {activeTab === 'weights' && (
           <div className={compact ? "grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-6" : "grid grid-cols-2 lg:grid-cols-5 gap-x-12 gap-y-10"}>
-            {INDICATORS.map((ind) => (
+            {indicators.map((ind) => (
               <div key={ind.key} className="flex flex-col gap-2">
                 <div className="flex items-end justify-between">
                   <label className="font-sans text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     {ind.shortLabel}
                   </label>
                   <span className="font-serif text-xl font-bold text-foreground">
-                    {weights[ind.key]}<span className="text-sm text-muted-foreground ml-0.5">%</span>
+                    {weights[ind.key] || 0}<span className="text-sm text-muted-foreground ml-0.5">%</span>
                   </span>
                 </div>
                 <Slider
-                  value={[weights[ind.key]]}
+                  value={[weights[ind.key] || 0]}
                   onValueChange={(v) => onWeightChange(ind.key, v[0])}
                   max={50}
                   min={0}
@@ -115,11 +117,11 @@ export function ConfigPanel({
         {/* Knockouts Tab */}
         {activeTab === 'knockouts' && (
           <div className={compact ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" : "grid grid-cols-2 lg:grid-cols-5 gap-8"}>
-            {INDICATORS.map((ind) => (
+            {indicators.map((ind) => (
               <KnockoutSelector
                 key={ind.key}
                 indicator={ind}
-                value={knockouts[ind.key]}
+                value={knockouts[ind.key] || 'none'}
                 onChange={(level) => onKnockoutChange(ind.key, level)}
               />
             ))}

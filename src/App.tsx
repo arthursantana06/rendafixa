@@ -10,10 +10,27 @@ import { DataTable } from '@/components/DataTable';
 import { MethodologyPage } from '@/components/MethodologyPage';
 import { DataExtractionPage } from '@/components/DataExtractionPage';
 import { analyzeAllBanks } from '@/lib/analysis';
-import { getDefaultWeights, getDefaultKnockouts } from '@/lib/indicators';
+import { INDICATORS, getDefaultWeights, getDefaultKnockouts } from '@/lib/indicators';
 import { supabase } from '@/lib/supabase';
-import type { BankData, BankAnalysis, IndicatorKey, KnockoutLevel, MainTab, SubTab, ParametroIndicador } from '@/types';
+import type { BankData, BankAnalysis, IndicatorKey, KnockoutLevel, MainTab, SubTab, ParametroIndicador, IndicatorConfig } from '@/types';
 import { FileSpreadsheet } from 'lucide-react';
+
+// Helper to derive sigla from label automatically
+function deriveShortLabel(label: string): string {
+  const parenMatch = label.match(/\(([^)]+)\)/);
+  if (parenMatch && parenMatch[1].length <= 5) {
+    return parenMatch[1].toUpperCase();
+  }
+  const words = label.trim().split(/\s+/);
+  if (words.length === 1) {
+    return words[0].slice(0, 3).toUpperCase();
+  }
+  return words
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 4);
+}
 
 function App() {
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('emissor');
@@ -69,6 +86,7 @@ function App() {
   const [weights, setWeights] = useState<Record<IndicatorKey, number>>(getDefaultWeights());
   const [knockouts, setKnockouts] = useState<Record<IndicatorKey, KnockoutLevel>>(getDefaultKnockouts());
   const [parameters, setParameters] = useState<Record<IndicatorKey, ParametroIndicador> | undefined>(undefined);
+  const [indicators, setIndicators] = useState<IndicatorConfig[]>(INDICATORS);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   const fetchParameters = useCallback(async () => {
@@ -82,15 +100,91 @@ function App() {
           limite_muito_bom: Number(row.limite_muito_bom),
           limite_bom: Number(row.limite_bom),
           limite_moderado: Number(row.limite_moderado),
+          description: row.description || undefined,
+          source: row.source || undefined,
         };
         return acc;
       }, {} as Record<IndicatorKey, ParametroIndicador>);
       setParameters(mapped);
+
+      // Build unified indicators list
+      const staticKeys = INDICATORS.map(i => i.key);
+      const customInds: IndicatorConfig[] = data
+        .filter(row => !staticKeys.includes(row.key))
+        .map(row => ({
+          key: row.key,
+          label: row.label,
+          shortLabel: deriveShortLabel(row.label),
+          description: row.description || '',
+          unit: '%',
+          source: row.source || 'Não especificada',
+          sourceField: 'Não extraído',
+        }));
+
+      setIndicators([...INDICATORS, ...customInds]);
     }
   }, []);
 
   useEffect(() => {
     fetchParameters();
+  }, [fetchParameters]);
+
+  // Keep weights and knockouts synchronized with indicators
+  useEffect(() => {
+    setWeights(prev => {
+      const updated = { ...prev };
+      let changed = false;
+      indicators.forEach(ind => {
+        if (updated[ind.key] === undefined) {
+          updated[ind.key] = 0; // default weight is 0
+          changed = true;
+        }
+      });
+      return changed ? updated : prev;
+    });
+
+    setKnockouts(prev => {
+      const updated = { ...prev };
+      let changed = false;
+      indicators.forEach(ind => {
+        if (updated[ind.key] === undefined) {
+          updated[ind.key] = 'none'; // default knockout is 'none'
+          changed = true;
+        }
+      });
+      return changed ? updated : prev;
+    });
+  }, [indicators]);
+
+  const handleAddIndicator = useCallback(async (newInd: {
+    key: string;
+    label: string;
+    description: string;
+    source: string;
+    direction: 'higher_is_better' | 'lower_is_better';
+    limite_muito_bom: number;
+    limite_bom: number;
+    limite_moderado: number;
+  }) => {
+    const { error } = await supabase
+      .from('parametros_indicadores')
+      .insert({
+        key: newInd.key,
+        label: newInd.label,
+        direction: newInd.direction,
+        limite_muito_bom: newInd.limite_muito_bom,
+        limite_bom: newInd.limite_bom,
+        limite_moderado: newInd.limite_moderado,
+        description: newInd.description,
+        source: newInd.source,
+      });
+
+    if (error) {
+      console.error('Failed to save custom indicator in Supabase:', error);
+      throw error;
+    }
+
+    await fetchParameters();
   }, [fetchParameters]);
 
   const handleUpdateParameter = useCallback(async (key: IndicatorKey, updates: Partial<ParametroIndicador>) => {
@@ -124,8 +218,8 @@ function App() {
 
   const analyses = useMemo<BankAnalysis[]>(() => {
     if (banks.length === 0) return [];
-    return analyzeAllBanks(banks, weights, knockouts, parameters);
-  }, [banks, weights, knockouts, parameters]);
+    return analyzeAllBanks(banks, weights, knockouts, parameters, indicators);
+  }, [banks, weights, knockouts, parameters, indicators]);
 
 
 
@@ -184,12 +278,13 @@ function App() {
                 </div>
               )}
 
-              {!isLoading && banks.length > 0 && <DataTable analyses={analyses} />}
+              {!isLoading && banks.length > 0 && <DataTable analyses={analyses} indicators={indicators} />}
             </>
           )}
 
           {activeMainTab === 'emissor' && activeSubTab === 'metodologia' && (
             <MethodologyPage 
+              indicators={indicators}
               parameters={parameters} 
               onUpdateParameter={handleUpdateParameter} 
               onTogglePanel={() => setIsPanelOpen(p => !p)}
@@ -199,6 +294,7 @@ function App() {
               onWeightChange={handleWeightChange}
               onKnockoutChange={handleKnockoutChange}
               onResetWeights={handleResetWeights}
+              onAddIndicator={handleAddIndicator}
             />
           )}
           

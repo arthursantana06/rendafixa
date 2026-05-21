@@ -5,14 +5,15 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { INDICATORS, getQualityColor, getQualityDotColor } from '@/lib/indicators';
-import type { BankAnalysis, IndicatorKey, SortConfig } from '@/types';
+import type { BankAnalysis, IndicatorKey, SortConfig, IndicatorConfig } from '@/types';
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, Check, X } from 'lucide-react';
 
 interface DataTableProps {
   analyses: BankAnalysis[];
+  indicators?: IndicatorConfig[];
 }
 
-export function DataTable({ analyses }: DataTableProps) {
+export function DataTable({ analyses, indicators = INDICATORS }: DataTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<SortConfig>({ column: 'score', direction: 'desc' });
 
@@ -122,7 +123,7 @@ export function DataTable({ analyses }: DataTableProps) {
                   Status <SortIcon column="status" />
                 </button>
               </th>
-              {INDICATORS.map((ind) => (
+              {indicators.map((ind) => (
                 <th key={ind.key} className="py-4 px-3">
                   <button
                     onClick={() => handleSort(ind.key)}
@@ -137,7 +138,7 @@ export function DataTable({ analyses }: DataTableProps) {
           </thead>
           <tbody>
             {paginated.map((analysis) => (
-              <BankRow key={analysis.bank.id} analysis={analysis} />
+              <BankRow key={analysis.bank.id} analysis={analysis} indicatorsList={indicators} />
             ))}
           </tbody>
         </table>
@@ -190,8 +191,8 @@ export function DataTable({ analyses }: DataTableProps) {
 // Row Sub-component
 // ============================================================
 
-function BankRow({ analysis }: { analysis: BankAnalysis }) {
-  const { bank, indicators, weightedScore, isKnockedOut, knockoutReasons, status } = analysis;
+function BankRow({ analysis, indicatorsList }: { analysis: BankAnalysis; indicatorsList: IndicatorConfig[] }) {
+  const { bank, indicators: analysisIndicators, weightedScore, isKnockedOut, knockoutReasons, status } = analysis;
 
   return (
     <tr className={`border-b border-border/40 transition-colors hover:bg-muted/30 ${
@@ -242,8 +243,8 @@ function BankRow({ analysis }: { analysis: BankAnalysis }) {
       </td>
 
       {/* Indicators */}
-      {INDICATORS.map((ind) => {
-        const result = indicators[ind.key];
+      {indicatorsList.map((ind) => {
+        const result = analysisIndicators[ind.key] || { value: 0, rating: 'moderado', score: 0, displayValue: 'N/I' };
         return (
           <td key={ind.key} className="py-4 px-3">
             <div className="flex items-center gap-1.5">

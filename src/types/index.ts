@@ -4,26 +4,28 @@
 
 export type QualityRating = 'muito_bom' | 'bom' | 'moderado' | 'ruim';
 
-export type IndicatorKey = 'ib' | 'cet1' | 'ii' | 'icp' | 'roe' | 'roa';
+export type IndicatorKey = string;
 
 export interface IndicatorConfig {
-  key: IndicatorKey;
+  key: string;
   label: string;
   shortLabel: string;
   description: string;
   unit: string;
   source: string;
   sourceField: string;
-  criteria: Partial<Record<QualityRating, string>>;
+  criteria?: Partial<Record<QualityRating, string>>;
 }
 
 export interface ParametroIndicador {
-  key: IndicatorKey;
+  key: string;
   label: string;
   direction: 'higher_is_better' | 'lower_is_better';
   limite_muito_bom: number;
   limite_bom: number;
   limite_moderado: number;
+  description?: string;
+  source?: string;
 }
 
 

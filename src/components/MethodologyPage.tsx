@@ -9,6 +9,7 @@ import type { IndicatorConfig, QualityRating, IndicatorKey, ParametroIndicador, 
 import { ConfigPanel } from './ConfigPanel';
 
 interface MethodologyPageProps {
+  indicators?: IndicatorConfig[];
   parameters?: Record<IndicatorKey, ParametroIndicador>;
   onUpdateParameter: (key: IndicatorKey, updates: Partial<ParametroIndicador>) => void;
   onTogglePanel: () => void;
@@ -18,9 +19,23 @@ interface MethodologyPageProps {
   onWeightChange: (key: IndicatorKey, value: number) => void;
   onKnockoutChange: (key: IndicatorKey, level: KnockoutLevel) => void;
   onResetWeights: () => void;
+  onAddIndicator?: (newInd: {
+    key: string;
+    label: string;
+    shortLabel: string;
+    description: string;
+    unit: string;
+    source: string;
+    sourceField: string;
+    direction: 'higher_is_better' | 'lower_is_better';
+    limite_muito_bom: number;
+    limite_bom: number;
+    limite_moderado: number;
+  }) => Promise<void>;
 }
 
 export function MethodologyPage({ 
+  indicators = INDICATORS,
   parameters, 
   onUpdateParameter,
   onTogglePanel,
@@ -29,8 +44,10 @@ export function MethodologyPage({
   knockouts,
   onWeightChange,
   onKnockoutChange,
-  onResetWeights
+  onResetWeights,
+  onAddIndicator
 }: MethodologyPageProps) {
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   return (
     <div className="max-w-[1920px] mx-auto px-8 py-6 h-[calc(100vh-155px)] flex flex-col overflow-hidden">
       
@@ -44,9 +61,27 @@ export function MethodologyPage({
             Critérios de avaliação de risco de crédito baseados em dados prudenciais do BACEN. Identificar e mensurar a qualidade do emissor de forma sistemática é essencial para a construção de carteiras resilientes.
           </p>
         </div>
-        <div className="flex-shrink-0 pt-1">
+        <div className="flex-shrink-0 pt-1 flex gap-3">
           <button
-            onClick={onTogglePanel}
+            onClick={() => {
+              setIsAddFormOpen(!isAddFormOpen);
+              if (isPanelOpen) onTogglePanel();
+            }}
+            className={`flex items-center gap-2.5 px-6 py-3.5 text-[11px] font-sans font-black uppercase tracking-widest transition-all duration-300 cursor-pointer border ${
+              isAddFormOpen 
+                ? 'bg-foreground text-background border-foreground hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98]' 
+                : 'bg-background text-foreground border-foreground/30 hover:border-foreground hover:bg-foreground/5 hover:scale-[1.02] active:scale-[0.98]'
+            }`}
+          >
+            <span className="text-sm font-bold">+</span>
+            <span>Novo Indicador</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onTogglePanel();
+              if (isAddFormOpen) setIsAddFormOpen(false);
+            }}
             className={`flex items-center gap-2.5 px-6 py-3.5 text-[11px] font-sans font-black uppercase tracking-widest transition-all duration-300 cursor-pointer border ${
               isPanelOpen 
                 ? 'bg-foreground text-background border-foreground hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98]' 
@@ -70,6 +105,22 @@ export function MethodologyPage({
             onResetWeights={onResetWeights}
             isOpen={isPanelOpen}
             compact={false}
+            indicators={indicators}
+          />
+        </div>
+      )}
+
+      {/* New Indicator Form dynamically shown above the content grid spanning full width */}
+      {isAddFormOpen && (
+        <div className="mb-6 shrink-0 border border-border/60 bg-muted/10 p-6 animate-in slide-in-from-top-2 duration-300 max-h-[450px] overflow-y-auto">
+          <NewIndicatorForm 
+            onAdd={async (data) => {
+              if (onAddIndicator) {
+                await onAddIndicator(data);
+                setIsAddFormOpen(false);
+              }
+            }}
+            onClose={() => setIsAddFormOpen(false)}
           />
         </div>
       )}
@@ -155,7 +206,7 @@ export function MethodologyPage({
           </div>
           
           <div className="flex-1 overflow-y-auto pr-2 scroll-smooth flex flex-col gap-4">
-            {INDICATORS.map((ind) => (
+            {indicators.map((ind) => (
               <IndicatorEditorialBlock 
                 key={ind.key} 
                 indicator={ind} 
@@ -357,7 +408,7 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
                 {qualityLevels.map(({ key, label }) => {
-                  let previewText = indicator.criteria[key];
+                  let previewText = indicator.criteria?.[key] || '';
                   if (parameter) {
                     const mbNum = Number(muitoBom) || 0;
                     const bNum = Number(bom) || 0;
@@ -388,5 +439,243 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
         </div>
       )}
     </article>
+  );
+}
+
+// ============================================================
+// New Indicator Form Component
+// ============================================================
+
+interface NewIndicatorFormProps {
+  onAdd: (data: {
+    key: string;
+    label: string;
+    shortLabel: string;
+    description: string;
+    unit: string;
+    source: string;
+    sourceField: string;
+    direction: 'higher_is_better' | 'lower_is_better';
+    limite_muito_bom: number;
+    limite_bom: number;
+    limite_moderado: number;
+  }) => Promise<void>;
+  onClose: () => void;
+}
+
+export function NewIndicatorForm({ onAdd, onClose }: NewIndicatorFormProps) {
+  const [label, setLabel] = useState('');
+  const [shortLabel, setShortLabel] = useState('');
+  const [description, setDescription] = useState('');
+  const [source, setSource] = useState('');
+  const [direction, setDirection] = useState<'higher_is_better' | 'lower_is_better'>('higher_is_better');
+  const [limiteMuitoBom, setLimiteMuitoBom] = useState('');
+  const [limiteBom, setLimiteBom] = useState('');
+  const [limiteModerado, setLimiteModerado] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!label.trim()) return setError('O nome do indicador é obrigatório.');
+    if (!shortLabel.trim()) return setError('A sigla é obrigatória.');
+    if (!description.trim()) return setError('A descrição é obrigatória.');
+    if (!source.trim()) return setError('A fonte de dados é obrigatória.');
+    if (!limiteMuitoBom || !limiteBom || !limiteModerado) {
+      return setError('Todos os limites dos parâmetros são obrigatórios.');
+    }
+
+    const key = label
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/^_+|_+$/g, '');
+
+    if (!key) return setError('Nome do indicador inválido.');
+
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      await onAdd({
+        key,
+        label: label.trim(),
+        shortLabel: shortLabel.trim().toUpperCase(),
+        description: description.trim(),
+        unit: '%',
+        source: source.trim(),
+        sourceField: 'Não extraído',
+        direction,
+        limite_muito_bom: Number(limiteMuitoBom),
+        limite_bom: Number(limiteBom),
+        limite_moderado: Number(limiteModerado),
+      });
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao salvar indicador.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full animate-in fade-in duration-300">
+      <div className="flex items-center justify-between border-b border-border/40 pb-2">
+        <h3 className="font-sans text-xs font-black uppercase tracking-widest text-foreground">
+          Criar Novo Indicador Customizado
+        </h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="font-sans text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Cancelar
+        </button>
+      </div>
+
+      {error && (
+        <div className="font-sans text-[10px] font-bold uppercase tracking-widest text-destructive bg-destructive/5 p-3 border border-destructive/20">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <div className="md:col-span-6 flex flex-col gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2 flex flex-col gap-1">
+              <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                Nome do Indicador
+              </label>
+              <input
+                type="text"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="Ex: Liquidez Corrente"
+                className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground placeholder:opacity-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                Sigla
+              </label>
+              <input
+                type="text"
+                value={shortLabel}
+                onChange={(e) => setShortLabel(e.target.value)}
+                placeholder="Ex: LC"
+                className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground placeholder:opacity-50"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+              Fonte do Dado
+            </label>
+            <input
+              type="text"
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              placeholder="Ex: IF.data > Dados por Instituição > Ativo"
+              className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground placeholder:opacity-50"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+              Descrição Detalhada
+            </label>
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descreva o que este indicador mede, como ele afeta a solvência..."
+              className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground resize-none placeholder:opacity-50"
+            />
+          </div>
+        </div>
+
+        <div className="md:col-span-6 flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+              Direção da Nota
+            </label>
+            <div className="flex border border-border/60">
+              <button
+                type="button"
+                onClick={() => setDirection('higher_is_better')}
+                className={`flex-1 font-sans text-[9px] font-bold uppercase tracking-widest py-2 transition-colors cursor-pointer ${
+                  direction === 'higher_is_better'
+                    ? 'bg-foreground text-background font-black'
+                    : 'bg-transparent text-muted-foreground hover:bg-muted/10'
+                }`}
+              >
+                Maior é Melhor
+              </button>
+              <button
+                type="button"
+                onClick={() => setDirection('lower_is_better')}
+                className={`flex-1 font-sans text-[9px] font-bold uppercase tracking-widest py-2 transition-colors cursor-pointer ${
+                  direction === 'lower_is_better'
+                    ? 'bg-foreground text-background font-black'
+                    : 'bg-transparent text-muted-foreground hover:bg-muted/10'
+                }`}
+              >
+                Menor é Melhor
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mt-2">
+            <div className="flex flex-col gap-1">
+              <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                Limite Muito Bom
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={limiteMuitoBom}
+                onChange={(e) => setLimiteMuitoBom(e.target.value)}
+                placeholder="Ex: 15.0"
+                className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground placeholder:opacity-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                Limite Bom
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={limiteBom}
+                onChange={(e) => setLimiteBom(e.target.value)}
+                placeholder="Ex: 12.0"
+                className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground placeholder:opacity-50"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                Limite Moderado
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={limiteModerado}
+                onChange={(e) => setLimiteModerado(e.target.value)}
+                placeholder="Ex: 10.0"
+                className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground placeholder:opacity-50"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="mt-auto font-sans text-[10px] font-black uppercase tracking-widest bg-foreground border border-foreground text-background py-3 hover:bg-foreground/90 transition-all cursor-pointer text-center"
+          >
+            Adicionar Indicador
+          </button>
+        </div>
+      </div>
+    </form>
   );
 }
