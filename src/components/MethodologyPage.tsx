@@ -703,7 +703,7 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
                   Visualização dos Intervalos
                 </h5>
                 <VisualIntervalBar 
-                  direction={parameter?.direction || indicator.direction}
+                  direction={parameter?.direction || (['ii', 'ie'].includes(indicator.key) ? 'lower_is_better' : 'higher_is_better')}
                   muitoBom={Number(muitoBom) || 0}
                   bom={Number(bom) || 0}
                   moderado={Number(moderado) || 0}
@@ -1144,9 +1144,10 @@ export function NewIndicatorForm({ onAdd, onClose }: NewIndicatorFormProps) {
 
           <button
             type="submit"
-            className="mt-2 font-sans text-[10px] font-black uppercase tracking-widest bg-foreground border border-foreground text-background py-3.5 hover:bg-foreground/90 transition-all cursor-pointer text-center"
+            disabled={isSubmitting}
+            className="mt-2 font-sans text-[10px] font-black uppercase tracking-widest bg-foreground border border-foreground text-background py-3.5 hover:bg-foreground/90 transition-all cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Adicionar Indicador
+            {isSubmitting ? 'Adicionando...' : 'Adicionar Indicador'}
           </button>
         </div>
       </div>

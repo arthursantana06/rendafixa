@@ -3,7 +3,7 @@
 // Baseado no documento: Critérios de Análise de Emissor
 // Fonte: HFC Consultoria - Metodologia Proprietária
 // ============================================================
-import type { IndicatorKey, IndicatorConfig, QualityRating, BankData, DimensionKey, DimensionConfig } from '@/types';
+import type { IndicatorConfig, QualityRating, BankData, DimensionConfig } from '@/types';
 
 
 // ============================================================

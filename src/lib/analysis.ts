@@ -1,4 +1,4 @@
-import type { BankData, BankAnalysis, IndicatorKey, IndicatorResult, KnockoutLevel, ParametroIndicador, IndicatorConfig } from '@/types';
+import type { BankData, BankAnalysis, IndicatorKey, IndicatorResult, KnockoutLevel, ParametroIndicador, IndicatorConfig, QualityRating } from '@/types';
 import { INDICATORS, classifyIndicator, classifyIndicatorWithValue, getQualityScore, formatIndicatorValue, getDimensions } from './indicators';
 
 /**
