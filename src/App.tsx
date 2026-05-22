@@ -9,6 +9,7 @@ import { Header } from '@/components/Header';
 import { DataTable } from '@/components/DataTable';
 import { MethodologyPage } from '@/components/MethodologyPage';
 import { DataExtractionPage } from '@/components/DataExtractionPage';
+import { ScoreCalculationPage } from '@/components/ScoreCalculationPage';
 import { analyzeAllBanks } from '@/lib/analysis';
 import { INDICATORS, getDefaultWeights, getDefaultKnockouts } from '@/lib/indicators';
 import { supabase } from '@/lib/supabase';
@@ -31,6 +32,15 @@ function deriveShortLabel(label: string): string {
     .toUpperCase()
     .slice(0, 4);
 }
+
+const DEFAULT_FORMULAS: Record<string, string> = {
+  capital: '(ib_score + cet1_score + razao_alavancagem_score) / 3',
+  liquidez: 'lcr_score',
+  qualidade_carteira: '(ii_score + icp_score + deposito_vista_funding_score) / 3',
+  resultado: '(roe_score + roa_score + ie_score) / 3',
+  porte: '(ativo_total_score + carteira_credito_score) / 2',
+  score_final: '(capital * 0.20) + (liquidez * 0.25) + (qualidade_carteira * 0.25) + (resultado * 0.20) + (porte * 0.10)'
+};
 
 function App() {
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('emissor');
@@ -94,6 +104,30 @@ function App() {
   const [parameters, setParameters] = useState<Record<IndicatorKey, ParametroIndicador> | undefined>(undefined);
   const [indicators, setIndicators] = useState<IndicatorConfig[]>(INDICATORS);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [formulas, setFormulas] = useState<Record<string, string>>({ ...DEFAULT_FORMULAS });
+  const [tempo, setTempo] = useState<number>(1);
+
+  const fetchFormulas = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.from('formulas_dimensoes').select('*');
+      if (!error && data) {
+        const mapped = data.reduce((acc, row) => {
+          acc[row.dimension_key] = row.formula;
+          return acc;
+        }, {} as Record<string, string>);
+        setFormulas(prev => ({
+          ...prev,
+          ...mapped
+        }));
+      }
+    } catch (e) {
+      console.error('Erro ao buscar formulas do banco:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFormulas();
+  }, [fetchFormulas]);
 
   const fetchParameters = useCallback(async () => {
     const { data, error } = await supabase.from('parametros_indicadores').select('*');
@@ -240,8 +274,8 @@ function App() {
 
   const analyses = useMemo<BankAnalysis[]>(() => {
     if (banks.length === 0) return [];
-    return analyzeAllBanks(banks, weights, knockouts, parameters, indicators);
-  }, [banks, weights, knockouts, parameters, indicators]);
+    return analyzeAllBanks(banks, weights, knockouts, parameters, indicators, formulas, tempo);
+  }, [banks, weights, knockouts, parameters, indicators, formulas, tempo]);
 
 
 
@@ -300,7 +334,14 @@ function App() {
                 </div>
               )}
 
-              {!isLoading && banks.length > 0 && <DataTable analyses={analyses} indicators={indicators} />}
+              {!isLoading && banks.length > 0 && (
+                <DataTable 
+                  analyses={analyses} 
+                  indicators={indicators} 
+                  tempo={tempo} 
+                  onTempoChange={setTempo} 
+                />
+              )}
             </>
           )}
 
@@ -317,6 +358,11 @@ function App() {
               onKnockoutChange={handleKnockoutChange}
               onResetWeights={handleResetWeights}
               onAddIndicator={handleAddIndicator}
+              onSubTabChange={setActiveSubTab}
+              banks={banks}
+              formulas={formulas}
+              onUpdateFormulas={setFormulas}
+              tempo={tempo}
             />
           )}
           

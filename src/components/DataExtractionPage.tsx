@@ -202,11 +202,41 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
             await sleep(150);
 
             const sample = rows[0];
-            const hasCodigo = 'Código' in sample || 'codigo' in sample;
-            const hasNome = 'Instituição' in sample || 'instituicao' in sample;
 
-            if (!hasCodigo || !hasNome) {
-              throw new Error('Chaves primárias ausentes. O CSV deve conter "Código" e "Instituição".');
+            // Robust accent-insensitive, case-insensitive, symbol-neutral column finder
+            const findColName = (keywords: string[]) => {
+              const keys = Object.keys(sample);
+              const normalize = (str: string) => 
+                str.toLowerCase()
+                  .normalize("NFD")
+                  .replace(/[\u0300-\u036f]/g, "") // remove accents
+                  .replace(/[_\-\s\(\)%]/g, "")   // remove spaces, symbols, parens, percentages
+                  .trim();
+              
+              // 1. Exact normalized match first
+              for (const key of keys) {
+                const nKey = normalize(key);
+                for (const kw of keywords) {
+                  const nKw = normalize(kw);
+                  if (nKey === nKw) return key;
+                }
+              }
+              // 2. Substring match second
+              for (const key of keys) {
+                const nKey = normalize(key);
+                for (const kw of keywords) {
+                  const nKw = normalize(kw);
+                  if (nKey.includes(nKw) || nKw.includes(nKey)) return key;
+                }
+              }
+              return undefined;
+            };
+
+            const colCodigo = findColName(['codigo', 'code']);
+            const colNome = findColName(['instituicao', 'nome', 'emissor', 'bank', 'institution']);
+
+            if (!colCodigo || !colNome) {
+              throw new Error('Chaves primárias ausentes. O CSV deve conter identificadores correspondentes a "Código" e "Instituição".');
             }
 
             const getColsFor = (key: string, defaults: string[]) => {
@@ -217,25 +247,35 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
               return defaults;
             };
 
-            // Check each indicator column presence in CSV
+            // Setup comprehensive keywords for all database fields
             const indicatorsMap = [
-              { key: 'ib', label: 'Basileia', cols: getColsFor('ib', ['Indice_Basileia (%)', 'Indice_Basileia', 'ib']) },
-              { key: 'cet1', label: 'CET1', cols: getColsFor('cet1', ['Capital_Principal_CET1 (%)', 'Capital_Principal_CET1', 'cet1']) },
-              { key: 'ii', label: 'Inadimplência', cols: getColsFor('ii', ['Indice_Inadimplencia_II (%)', 'Indice_Inadimplencia_II', 'ii']) },
-              { key: 'icp', label: 'Cobertura', cols: getColsFor('icp', ['ICP_Cobertura (%)', 'ICP_Cobertura', 'icp']) },
-              { key: 'roe', label: 'ROE', cols: getColsFor('roe', ['ROE_Calculado (%)', 'ROE_Calculado', 'roe']) },
-              { key: 'roa', label: 'ROA', cols: getColsFor('roa', ['ROA_Calculado (%)', 'ROA_Calculado', 'roa']) },
-              { key: 'razao_alavancagem', label: 'Razão de Alavancagem', cols: getColsFor('razao_alavancagem', ['Razao_Alavancagem (%)', 'Razao_Alavancagem', 'razao_alavancagem']) },
-              { key: 'deposito_vista_funding', label: 'Depósito à Vista / Funding', cols: getColsFor('deposito_vista_funding', ['Deposito_Vista_vs_Funding (%)', 'Deposito_Vista_vs_Funding', 'deposito_vista_funding']) },
-              { key: 'ativo_total', label: 'Ativo Total', cols: getColsFor('ativo_total', ['Ativo Total', 'ativo_total']) },
-              { key: 'carteira_credito', label: 'Carteira de Crédito', cols: getColsFor('carteira_credito', ['Carteira de Crédito Total', 'carteira_credito_total', 'carteira_credito']) },
-              { key: 'ie', label: 'Índice de Eficiência', cols: getColsFor('ie', ['Indice_Eficiencia (%)', 'Indice_Eficiencia', 'ie', 'Índice de Eficiência', 'Indice de Eficiencia (%)']) },
-              { key: 'lcr', label: 'LCR (Liquidez Curto Prazo)', cols: getColsFor('lcr', ['LCR - Índice de Liquidez de Curto Prazo (%)', 'LCR_Indice_Liquidez_Curto_Prazo (%)', 'lcr', 'LCR', 'LCR (%)']) },
+              { key: 'ib', label: 'Basileia', keywords: getColsFor('ib', ['indice basileia', 'basileia', 'ib']) },
+              { key: 'cet1', label: 'CET1', keywords: getColsFor('cet1', ['cet1', 'capital principal cet1', 'cet 1']) },
+              { key: 'ii', label: 'Inadimplência', keywords: getColsFor('ii', ['indice inadimplencia ii', 'inadimplencia', 'ii']) },
+              { key: 'icp', label: 'Cobertura', keywords: getColsFor('icp', ['icp cobertura', 'cobertura', 'icp']) },
+              { key: 'roe', label: 'ROE', keywords: getColsFor('roe', ['roe calculado', 'roe']) },
+              { key: 'roa', label: 'ROA', keywords: getColsFor('roa', ['roa calculado', 'roa']) },
+              { key: 'razao_alavancagem', label: 'Razão de Alavancagem', keywords: getColsFor('razao_alavancagem', ['razao alavancagem', 'alavancagem']) },
+              { key: 'deposito_vista_funding', label: 'Depósito à Vista / Funding', keywords: getColsFor('deposito_vista_funding', ['deposito vista vs funding', 'deposito vista funding', 'deposito vista']) },
+              { key: 'ativo_total', label: 'Ativo Total', keywords: getColsFor('ativo_total', ['ativo total', 'ativos', 'ativo']) },
+              { key: 'carteira_credito', label: 'Carteira de Crédito', keywords: getColsFor('carteira_credito', ['carteira de credito total', 'carteira de credito', 'carteira credito', 'credito']) },
+              { key: 'ie', label: 'Índice de Eficiência', keywords: getColsFor('ie', ['indice eficiencia ie', 'indice eficiencia', 'eficiencia', 'ie']) },
+              { key: 'lcr', label: 'LCR (Liquidez Curto Prazo)', keywords: getColsFor('lcr', ['lcr', 'indice de liquidez de curto prazo', 'liquidez curto prazo', 'liquidez']) },
+              
+              // Additional descriptive balanço columns
+              { key: 'patrimonio_liquido', label: 'Patrimônio Líquido', keywords: ['patrimonio liquido', 'patrimonio_liquido', 'patrimonio'] },
+              { key: 'lucro_liquido', label: 'Lucro Líquido', keywords: ['lucro liquido', 'lucro_liquido', 'lucro'] },
+              { key: 'pcld', label: 'PCLD Saldo', keywords: ['pcld saldo', 'pcld_saldo', 'pcld'] },
+              { key: 'total_depositos', label: 'Total Depósitos', keywords: ['total depositos', 'total_depositos', 'depositos'] },
+              { key: 'captacoes_totais', label: 'Captações Totais', keywords: ['captacoes totais', 'captacoes_totais', 'captacoes'] },
+              { key: 'atraso_total', label: 'Atraso Total', keywords: ['atraso total', 'atraso_total', 'atraso'] },
+              { key: 'ldr', label: 'LDR', keywords: ['ldr', 'ldr (%)'] },
+              { key: 'segmento', label: 'Segmento Prudencial', keywords: ['segmento prudencial', 'segmento_prudencial', 'segmento'] },
             ];
 
-            const resolvedCols: Record<string, string> = {};
+            const resolvedCols: Record<string, string | undefined> = {};
             for (const ind of indicatorsMap) {
-              const foundCol = ind.cols.find(c => c in sample);
+              const foundCol = findColName(ind.keywords);
               if (foundCol) {
                 resolvedCols[ind.key] = foundCol;
                 log('SUCCESS', `Mapeamento OK: Indicador '${ind.label}' associado à coluna '${foundCol}'.`);
@@ -249,33 +289,33 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
             await sleep(150);
 
             const mappedBanks = rows.map((row: any) => {
-              const codigo = String(row['Código'] || row['codigo'] || '').trim();
+              const codigo = String(row[colCodigo] || '').trim();
               if (!codigo || !/^\d+$/.test(codigo)) return null;
 
               return {
                 codigo,
-                nome: fixDoubleUtf8(String(row['Instituição'] || row['instituicao'] || 'N/I').trim()),
+                nome: fixDoubleUtf8(String(row[colNome] || 'N/I').trim()),
                 cnpj: String(row['CNPJ'] || row['cnpj'] || codigo).trim(),
-                ativo_total: parseNumber(row[resolvedCols['ativo_total']] ?? (row['Ativo Total'] || row['ativo_total'])),
-                patrimonio_liquido: parseNumber(row['Patrimônio Líquido'] || row['patrimonio_liquido']),
-                lucro_liquido: parseNumber(row['Lucro Líquido'] || row['lucro_liquido']),
-                carteira_credito: parseNumber(row[resolvedCols['carteira_credito']] ?? (row['Carteira de Crédito Total'] || row['carteira_credito_total'] || row['Carteira de Crédito'])),
-                segmento: String(row['Segmento_Prudencial'] || row['segmento_prudencial'] || 'S/S').trim(),
-                ib: parseNumber(row[resolvedCols['ib']] ?? (row['Indice_Basileia (%)'] || row['Indice_Basileia'] || row['ib'])),
-                cet1: parseNumber(row[resolvedCols['cet1']] ?? (row['Capital_Principal_CET1 (%)'] || row['Capital_Principal_CET1'] || row['cet1'])),
-                razao_alavancagem: parseNumber(row[resolvedCols['razao_alavancagem']] ?? (row['Razao_Alavancagem (%)'] || row['Razao_Alavancagem'])),
-                deposito_vista_funding: parseNumber(row[resolvedCols['deposito_vista_funding']] ?? (row['Deposito_Vista_vs_Funding (%)'] || row['Deposito_Vista_vs_Funding'] || row['deposito_vista_funding'])),
-                pcld: parseNumber(row['PCLD_Saldo'] || row['pcld_saldo'] || row['pcld']),
-                total_depositos: parseNumber(row['Total_Depositos'] || row['total_depositos']),
-                captacoes_totais: parseNumber(row['Captacoes_Totais'] || row['captacoes_totais']),
-                atraso_total: parseNumber(row['Atraso_Total'] || row['atraso_total']),
-                ldr: parseNumber(row['LDR (%)'] || row['ldr']),
-                ii: parseNumber(row[resolvedCols['ii']] ?? (row['Indice_Inadimplencia_II (%)'] || row['Indice_Inadimplencia_II'] || row['ii'])),
-                icp: parseNumber(row[resolvedCols['icp']] ?? (row['ICP_Cobertura (%)'] || row['ICP_Cobertura'] || row['icp'])),
-                roe: parseNumber(row[resolvedCols['roe']] ?? (row['ROE_Calculado (%)'] || row['ROE_Calculado'] || row['roe'])),
-                roa: parseNumber(row[resolvedCols['roa']] ?? (row['ROA_Calculado (%)'] || row['ROA_Calculado'] || row['roa'])),
-                ie: parseNumber(row[resolvedCols['ie']] ?? (row['Indice_Eficiencia (%)'] || row['Indice_Eficiencia'] || row['ie'] || row['Índice de Eficiência'] || row['Indice de Eficiencia (%)'])),
-                lcr: parseNumber(row[resolvedCols['lcr']] ?? (row['LCR - Índice de Liquidez de Curto Prazo (%)'] || row['LCR_Indice_Liquidez_Curto_Prazo (%)'] || row['lcr'] || row['LCR'] || row['LCR (%)'])),
+                ativo_total: parseNumber(resolvedCols['ativo_total'] ? row[resolvedCols['ativo_total']!] : 0),
+                patrimonio_liquido: parseNumber(resolvedCols['patrimonio_liquido'] ? row[resolvedCols['patrimonio_liquido']!] : 0),
+                lucro_liquido: parseNumber(resolvedCols['lucro_liquido'] ? row[resolvedCols['lucro_liquido']!] : 0),
+                carteira_credito: parseNumber(resolvedCols['carteira_credito'] ? row[resolvedCols['carteira_credito']!] : 0),
+                segmento: resolvedCols['segmento'] ? String(row[resolvedCols['segmento']!] || 'S/S').trim() : 'S/S',
+                ib: parseNumber(resolvedCols['ib'] ? row[resolvedCols['ib']!] : 0),
+                cet1: parseNumber(resolvedCols['cet1'] ? row[resolvedCols['cet1']!] : 0),
+                razao_alavancagem: parseNumber(resolvedCols['razao_alavancagem'] ? row[resolvedCols['razao_alavancagem']!] : 0),
+                deposito_vista_funding: parseNumber(resolvedCols['deposito_vista_funding'] ? row[resolvedCols['deposito_vista_funding']!] : 0),
+                pcld: parseNumber(resolvedCols['pcld'] ? row[resolvedCols['pcld']!] : 0),
+                total_depositos: parseNumber(resolvedCols['total_depositos'] ? row[resolvedCols['total_depositos']!] : 0),
+                captacoes_totais: parseNumber(resolvedCols['captacoes_totais'] ? row[resolvedCols['captacoes_totais']!] : 0),
+                atraso_total: parseNumber(resolvedCols['atraso_total'] ? row[resolvedCols['atraso_total']!] : 0),
+                ldr: parseNumber(resolvedCols['ldr'] ? row[resolvedCols['ldr']!] : 0),
+                ii: parseNumber(resolvedCols['ii'] ? row[resolvedCols['ii']!] : 0),
+                icp: parseNumber(resolvedCols['icp'] ? row[resolvedCols['icp']!] : 0),
+                roe: parseNumber(resolvedCols['roe'] ? row[resolvedCols['roe']!] : 0),
+                roa: parseNumber(resolvedCols['roa'] ? row[resolvedCols['roa']!] : 0),
+                ie: parseNumber(resolvedCols['ie'] ? row[resolvedCols['ie']!] : 0),
+                lcr: parseNumber(resolvedCols['lcr'] ? row[resolvedCols['lcr']!] : 0),
                 rating: 'SR',
                 fgc: 'coberto_250k'
               };

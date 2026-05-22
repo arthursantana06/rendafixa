@@ -12,12 +12,12 @@ import type { IndicatorConfig, QualityRating, BankData, DimensionConfig } from '
 export const DIMENSIONS: DimensionConfig[] = [
   {
     key: 'capital',
-    label: 'Indicadores de Capital',
+    label: 'Capital',
     indicators: ['ib', 'cet1', 'razao_alavancagem']
   },
   {
     key: 'liquidez',
-    label: 'Indicadores de Liquidez',
+    label: 'Liquidez',
     indicators: ['lcr']
   },
   {
@@ -27,12 +27,12 @@ export const DIMENSIONS: DimensionConfig[] = [
   },
   {
     key: 'resultado',
-    label: 'Indicadores de Resultado',
+    label: 'Resultado',
     indicators: ['roe', 'roa', 'ie']
   },
   {
     key: 'porte',
-    label: 'Indicadores de Porte',
+    label: 'Porte',
     indicators: ['ativo_total', 'carteira_credito']
   }
 ];

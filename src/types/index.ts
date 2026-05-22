@@ -100,4 +100,10 @@ export interface SortConfig {
 }
 
 export type MainTab = 'emissor' | 'titulos' | 'carteiras' | 'mercado';
-export type SubTab = 'analise' | 'metodologia' | 'extracao';
+export type SubTab = 'analise' | 'metodologia' | 'extracao' | 'score';
+
+export interface FormulaDimensao {
+  dimension_key: string;
+  formula: string;
+  updated_at?: string;
+}

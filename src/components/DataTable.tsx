@@ -11,11 +11,36 @@ import { Search, ArrowUpDown, ArrowUp, ArrowDown, Check, X } from 'lucide-react'
 interface DataTableProps {
   analyses: BankAnalysis[];
   indicators?: IndicatorConfig[];
+  tempo: number;
+  onTempoChange: (tempo: number) => void;
 }
 
-export function DataTable({ analyses, indicators = INDICATORS }: DataTableProps) {
+export function DataTable({ analyses, indicators = INDICATORS, tempo, onTempoChange }: DataTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<SortConfig>({ column: 'score', direction: 'desc' });
+  const [inputValue, setInputValue] = useState(tempo.toString());
+
+  // Keep local input in sync if prop changes externally
+  useEffect(() => {
+    setInputValue(tempo.toString());
+  }, [tempo]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let valStr = e.target.value.replace(',', '.'); // Allow comma as decimal separator
+    // Keep only numbers and a single dot
+    valStr = valStr.replace(/[^0-9.]/g, '');
+    const parts = valStr.split('.');
+    if (parts.length > 2) {
+      valStr = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    setInputValue(valStr);
+    
+    const parsed = parseFloat(valStr);
+    if (!isNaN(parsed) && parsed > 0) {
+      onTempoChange(parsed);
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return analyses;
@@ -80,8 +105,8 @@ export function DataTable({ analyses, indicators = INDICATORS }: DataTableProps)
 
   return (
     <div className="flex flex-col">
-      {/* Search Bar */}
-      <div className="px-8 py-6">
+      {/* Search Bar and Time Filter */}
+      <div className="px-8 py-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border-b border-border/10">
         <div className="relative max-w-md w-full">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -90,6 +115,21 @@ export function DataTable({ analyses, indicators = INDICATORS }: DataTableProps)
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 h-10 bg-transparent border-border/60 font-sans text-sm rounded-none focus-visible:ring-1 focus-visible:ring-foreground transition-all"
+          />
+        </div>
+
+        {/* Premium Dynamic Time Filter Input */}
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="font-sans text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            Período (Anos):
+          </span>
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="Ex: 1.5"
+            value={inputValue}
+            onChange={handleInputChange}
+            className="bg-transparent border border-border/60 bg-background hover:border-foreground focus:border-foreground text-foreground font-sans text-xs px-3 py-2 outline-none font-bold tracking-wider rounded-none h-10 w-24 text-center transition-all focus-visible:ring-1 focus-visible:ring-foreground"
           />
         </div>
       </div>

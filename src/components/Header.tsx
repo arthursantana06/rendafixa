@@ -2,7 +2,7 @@
 // HEADER COMPONENT - Editorial Style (Two-Tier Navigation)
 // ============================================================
 
-import { Building2, BookOpen, Database } from 'lucide-react';
+import { Building2, BookOpen, Database, Calculator } from 'lucide-react';
 import type { MainTab, SubTab } from '@/types';
 
 interface HeaderProps {

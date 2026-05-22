@@ -53,8 +53,14 @@ async function seed() {
   await client.connect();
   console.log('Connected to DB');
   
-  // Use the new CSV file scorecard_emissores_final (1).csv
-  const csvContent = fs.readFileSync('scorecard_emissores_final (1).csv', 'utf8');
+  let csvName = 'scorecard_emissores_final.csv';
+  if (!fs.existsSync(csvName)) {
+    if (fs.existsSync('scorecard_emissores_final (1).csv')) {
+      csvName = 'scorecard_emissores_final (1).csv';
+    }
+  }
+  console.log(`Using CSV file: ${csvName}`);
+  const csvContent = fs.readFileSync(csvName, 'utf8');
   const results = Papa.parse(csvContent, {
     header: true,
     skipEmptyLines: true,
@@ -93,10 +99,10 @@ async function seed() {
         codigo,
         nome,
         String(row['CNPJ'] || codigo).trim(),
-        parseNumber(row['Ativo Total']) / 1000000, // Divided by 1,000,000 to convert thousands of R$ to R$ Billions
+        parseNumber(row['Ativo Total']), // Raw Ativo Total from CSV (in thousands of R$)
         parseNumber(row['Patrimônio Líquido']),
         parseNumber(row['Lucro Líquido']),
-        parseNumber(row['Carteira de Crédito Total']) / 1000000, // Divided by 1,000,000 to convert thousands of R$ to R$ Billions
+        parseNumber(row['Carteira de Crédito Total']), // Raw Carteira de Crédito Total from CSV (in thousands of R$)
         String(row['Segmento_Prudencial'] || 'S/S').trim(),
         parseNumber(row['Indice_Basileia (%)']),
         parseNumber(row['Capital_Principal_CET1 (%)']),
@@ -112,7 +118,9 @@ async function seed() {
         parseNumber(row['ROE_Calculado (%)']),
         parseNumber(row['ROA_Calculado (%)']),
         'SR',
-        'coberto_250k'
+        'coberto_250k',
+        parseNumber(row['Indice_Eficiencia_IE (%)'] || row['Indice_Eficiencia (%)'] || row['ie']),
+        parseNumber(row['LCR (%)'] || row['LCR - Índice de Liquidez de Curto Prazo (%)'] || row['LCR_Indice_Liquidez_Curto_Prazo (%)'] || row['lcr'])
       ];
       
       const paramPlaceholders = [];
@@ -126,7 +134,7 @@ async function seed() {
     const queryText = `
       INSERT INTO emissores_bancarios (
         codigo, nome, cnpj, ativo_total, patrimonio_liquido, lucro_liquido, carteira_credito, segmento, 
-        ib, cet1, razao_alavancagem, deposito_vista_funding, pcld, total_depositos, captacoes_totais, atraso_total, ldr, ii, icp, roe, roa, rating, fgc
+        ib, cet1, razao_alavancagem, deposito_vista_funding, pcld, total_depositos, captacoes_totais, atraso_total, ldr, ii, icp, roe, roa, rating, fgc, ie, lcr
       ) VALUES ${valueClauses.join(', ')}
       ON CONFLICT (codigo) DO UPDATE SET
         nome = EXCLUDED.nome,
@@ -151,6 +159,8 @@ async function seed() {
         roa = EXCLUDED.roa,
         rating = EXCLUDED.rating,
         fgc = EXCLUDED.fgc,
+        ie = EXCLUDED.ie,
+        lcr = EXCLUDED.lcr,
         updated_at = CURRENT_TIMESTAMP
     `;
     
@@ -159,7 +169,7 @@ async function seed() {
     console.log(`Inserted batch: ${count}/${validRows.length}`);
   }
   
-  console.log(`Successfully seeded ${count} banks from 'scorecard_emissores_final (1).csv' with scaled indicators and deposito_vista_funding!`);
+  console.log(`Successfully seeded ${count} banks from CSV with scaled indicators, ie, and lcr!`);
   
   // Let's do a quick validation query to ensure the data was seeded correctly
   const sampleQuery = await client.query(`

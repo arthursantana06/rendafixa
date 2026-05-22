@@ -5,8 +5,9 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 import { INDICATORS } from '@/lib/indicators';
-import type { IndicatorConfig, QualityRating, IndicatorKey, ParametroIndicador, KnockoutLevel } from '@/types';
+import type { IndicatorConfig, QualityRating, IndicatorKey, ParametroIndicador, KnockoutLevel, SubTab, BankData } from '@/types';
 import { ConfigPanel } from './ConfigPanel';
+import { ScoreCalculationPage } from './ScoreCalculationPage';
 
 interface MethodologyPageProps {
   indicators?: IndicatorConfig[];
@@ -32,6 +33,11 @@ interface MethodologyPageProps {
     limite_bom: number;
     limite_moderado: number;
   }) => Promise<void>;
+  onSubTabChange?: (tab: SubTab) => void;
+  banks?: BankData[];
+  formulas?: Record<string, string>;
+  onUpdateFormulas?: (formulas: Record<string, string>) => void;
+  tempo?: number;
 }
 
 export function MethodologyPage({ 
@@ -45,9 +51,32 @@ export function MethodologyPage({
   onWeightChange,
   onKnockoutChange,
   onResetWeights,
-  onAddIndicator
+  onAddIndicator,
+  onSubTabChange,
+  banks = [],
+  formulas = {},
+  onUpdateFormulas = () => {},
+  tempo = 1
 }: MethodologyPageProps) {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+  const [isScoreCalcOpen, setIsScoreCalcOpen] = useState(false);
+
+  if (isScoreCalcOpen) {
+    return (
+      <ScoreCalculationPage
+        banks={banks}
+        weights={weights}
+        knockouts={knockouts}
+        parameters={parameters}
+        indicators={indicators}
+        formulas={formulas}
+        onUpdateFormulas={onUpdateFormulas}
+        onClose={() => setIsScoreCalcOpen(false)}
+        tempo={tempo}
+      />
+    );
+  }
+
   return (
     <div className="max-w-[1920px] mx-auto px-8 py-6 h-[calc(100vh-155px)] flex flex-col overflow-hidden">
       
@@ -79,14 +108,11 @@ export function MethodologyPage({
 
           <button
             onClick={() => {
-              onTogglePanel();
+              setIsScoreCalcOpen(true);
+              if (isPanelOpen) onTogglePanel();
               if (isAddFormOpen) setIsAddFormOpen(false);
             }}
-            className={`flex items-center gap-2.5 px-6 py-3.5 text-[11px] font-sans font-black uppercase tracking-widest transition-all duration-300 cursor-pointer border ${
-              isPanelOpen 
-                ? 'bg-foreground text-background border-foreground hover:bg-foreground/90 hover:scale-[1.02] active:scale-[0.98]' 
-                : 'bg-background text-foreground border-foreground/30 hover:border-foreground hover:bg-foreground/5 hover:scale-[1.02] active:scale-[0.98]'
-            }`}
+            className="flex items-center gap-2.5 px-6 py-3.5 text-[11px] font-sans font-black uppercase tracking-widest transition-all duration-300 cursor-pointer border bg-background text-foreground border-foreground/30 hover:border-foreground hover:bg-foreground/5 hover:scale-[1.02] active:scale-[0.98]"
           >
             <SlidersHorizontal className="h-4 w-4" />
             <span>Cálculo do SCORE</span>
