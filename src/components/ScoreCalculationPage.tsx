@@ -10,9 +10,7 @@ import {
   AlertCircle, 
   HelpCircle, 
   Play, 
-  TrendingUp, 
-  ArrowRight,
-  Search
+  ArrowRight
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { validateFormulaSyntax, evaluateFormula } from '@/lib/formulaParser';
@@ -295,18 +293,6 @@ export function ScoreCalculationPage({
     return results;
   }, [formulaStates]);
 
-  const hasSyntaxErrors = useMemo(() => {
-    return Object.values(validationResults).some(res => res !== null);
-  }, [validationResults]);
-
-  const hasUnsavedChanges = useMemo(() => {
-    const base = formulas && Object.keys(formulas).length > 0 ? formulas : DEFAULT_FORMULAS;
-    return Object.keys(formulaStates).some(key => {
-      const currentVal = formulaStates[key] || '';
-      const baseVal = base[key] || '';
-      return currentVal.trim() !== baseVal.trim();
-    });
-  }, [formulaStates, formulas]);
 
   // Insert a variable at the current cursor position of the focused dimension textarea
   const insertToken = (token: string) => {

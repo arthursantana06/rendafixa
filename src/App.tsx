@@ -9,7 +9,6 @@ import { Header } from '@/components/Header';
 import { DataTable } from '@/components/DataTable';
 import { MethodologyPage } from '@/components/MethodologyPage';
 import { DataExtractionPage } from '@/components/DataExtractionPage';
-import { ScoreCalculationPage } from '@/components/ScoreCalculationPage';
 import { analyzeAllBanks } from '@/lib/analysis';
 import { INDICATORS, getDefaultWeights, getDefaultKnockouts } from '@/lib/indicators';
 import { supabase } from '@/lib/supabase';
@@ -358,7 +357,6 @@ function App() {
               onKnockoutChange={handleKnockoutChange}
               onResetWeights={handleResetWeights}
               onAddIndicator={handleAddIndicator}
-              onSubTabChange={setActiveSubTab}
               banks={banks}
               formulas={formulas}
               onUpdateFormulas={setFormulas}

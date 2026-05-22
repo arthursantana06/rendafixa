@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
 import { INDICATORS } from '@/lib/indicators';
-import type { IndicatorConfig, QualityRating, IndicatorKey, ParametroIndicador, KnockoutLevel, SubTab, BankData } from '@/types';
+import type { IndicatorConfig, QualityRating, IndicatorKey, ParametroIndicador, KnockoutLevel, BankData } from '@/types';
 import { ConfigPanel } from './ConfigPanel';
 import { ScoreCalculationPage } from './ScoreCalculationPage';
 
@@ -33,7 +33,6 @@ interface MethodologyPageProps {
     limite_bom: number;
     limite_moderado: number;
   }) => Promise<void>;
-  onSubTabChange?: (tab: SubTab) => void;
   banks?: BankData[];
   formulas?: Record<string, string>;
   onUpdateFormulas?: (formulas: Record<string, string>) => void;
@@ -52,7 +51,6 @@ export function MethodologyPage({
   onKnockoutChange,
   onResetWeights,
   onAddIndicator,
-  onSubTabChange,
   banks = [],
   formulas = {},
   onUpdateFormulas = () => {},
