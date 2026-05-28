@@ -315,7 +315,7 @@ export function getQualityColor(rating: QualityRating): string {
     case 'muito_bom': return 'font-black text-foreground';
     case 'bom': return 'font-bold text-foreground/85';
     case 'moderado': return 'font-medium text-muted-foreground';
-    case 'ruim': return 'font-normal text-muted-foreground line-through opacity-70';
+    case 'ruim': return 'font-normal text-muted-foreground opacity-70';
   }
 }
 
