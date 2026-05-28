@@ -13,9 +13,10 @@ interface DataTableProps {
   indicators?: IndicatorConfig[];
   tempo: number;
   onTempoChange: (tempo: number) => void;
+  onSelectBank?: (analysis: BankAnalysis) => void;
 }
 
-export function DataTable({ analyses, indicators = INDICATORS, tempo, onTempoChange }: DataTableProps) {
+export function DataTable({ analyses, indicators = INDICATORS, tempo, onTempoChange, onSelectBank }: DataTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<SortConfig>({ column: 'score', direction: 'desc' });
   const [inputValue, setInputValue] = useState(tempo.toString());
@@ -178,7 +179,12 @@ export function DataTable({ analyses, indicators = INDICATORS, tempo, onTempoCha
           </thead>
           <tbody>
             {paginated.map((analysis) => (
-              <BankRow key={analysis.bank.id} analysis={analysis} indicatorsList={indicators} />
+              <BankRow 
+                key={analysis.bank.id} 
+                analysis={analysis} 
+                indicatorsList={indicators} 
+                onClick={() => onSelectBank?.(analysis)}
+              />
             ))}
           </tbody>
         </table>
@@ -231,13 +237,24 @@ export function DataTable({ analyses, indicators = INDICATORS, tempo, onTempoCha
 // Row Sub-component
 // ============================================================
 
-function BankRow({ analysis, indicatorsList }: { analysis: BankAnalysis; indicatorsList: IndicatorConfig[] }) {
+function BankRow({ 
+  analysis, 
+  indicatorsList, 
+  onClick 
+}: { 
+  analysis: BankAnalysis; 
+  indicatorsList: IndicatorConfig[]; 
+  onClick: () => void; 
+}) {
   const { bank, indicators: analysisIndicators, weightedScore, isKnockedOut, knockoutReasons, status } = analysis;
 
   return (
-    <tr className={`border-b border-border/40 transition-colors hover:bg-muted/30 ${
-      isKnockedOut ? 'opacity-40 grayscale hover:opacity-80 hover:grayscale-0' : ''
-    }`}>
+    <tr 
+      onClick={onClick}
+      className={`border-b border-border/40 transition-colors hover:bg-muted/30 cursor-pointer ${
+        isKnockedOut ? 'opacity-40 grayscale hover:opacity-80 hover:grayscale-0' : ''
+      }`}
+    >
       {/* Emissor */}
       <td className={`sticky left-0 z-10 py-4 pr-4 ${isKnockedOut ? 'bg-background' : 'bg-background group-hover:bg-muted/30'}`}>
         <div className="flex flex-col">

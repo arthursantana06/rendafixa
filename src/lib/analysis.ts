@@ -75,6 +75,7 @@ export function analyzeBank(
 
   // 3. Calculate weighted score by Dimension
   let weightedScore = 0;
+  const dimensionScores: Record<string, number> = {};
   
   if (!isKnockedOut) {
     const dims = getDimensions(indicatorsList);
@@ -92,8 +93,6 @@ export function analyzeBank(
 
     // Dynamic period variable
     variables['tempo'] = tempo;
-
-    const dimensionScores: Record<string, number> = {};
 
     for (const dim of dims) {
       const activeInds = dim.indicators.filter(key => indicators[key] && !indicators[key].isMissing);
@@ -166,6 +165,7 @@ export function analyzeBank(
     isKnockedOut,
     knockoutReasons,
     status: isKnockedOut ? 'nao_viavel' : 'elegivel',
+    dimensionScores,
   };
 }
 

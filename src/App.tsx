@@ -9,6 +9,7 @@ import { Header } from '@/components/Header';
 import { DataTable } from '@/components/DataTable';
 import { MethodologyPage } from '@/components/MethodologyPage';
 import { DataExtractionPage } from '@/components/DataExtractionPage';
+import { BankDetailsModal } from '@/components/BankDetailsModal';
 import { analyzeAllBanks } from '@/lib/analysis';
 import { INDICATORS, getDefaultWeights, getDefaultKnockouts } from '@/lib/indicators';
 import { supabase } from '@/lib/supabase';
@@ -47,6 +48,7 @@ function App() {
 
   const [banks, setBanks] = useState<BankData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<BankAnalysis | null>(null);
 
   const fetchBanks = useCallback(async () => {
     setIsLoading(true);
@@ -339,6 +341,7 @@ function App() {
                   indicators={indicators} 
                   tempo={tempo} 
                   onTempoChange={setTempo} 
+                  onSelectBank={setSelectedAnalysis}
                 />
               )}
             </>
@@ -375,6 +378,14 @@ function App() {
             </p>
           </div>
         </footer>
+
+        {selectedAnalysis && (
+          <BankDetailsModal
+            analysis={selectedAnalysis}
+            onClose={() => setSelectedAnalysis(null)}
+            onSaveSuccess={fetchBanks}
+          />
+        )}
       </div>
     </TooltipProvider>
   );

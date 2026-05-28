@@ -90,6 +90,7 @@ export interface BankAnalysis {
   isKnockedOut: boolean;
   knockoutReasons: string[];
   status: 'elegivel' | 'nao_viavel';
+  dimensionScores?: Record<string, number>;
 }
 
 export type SortDirection = 'asc' | 'desc';
