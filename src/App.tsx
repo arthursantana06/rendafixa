@@ -53,42 +53,65 @@ function App() {
   const fetchBanks = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.from('emissores_bancarios').select('*');
-      if (!error && data) {
-        const mappedBanks = data.map(row => {
-          const mapVal = (v: any) => (v !== undefined && v !== null && v !== '') ? Number(v) : null;
-          return {
-            id: row.codigo,
-            name: row.nome || 'N/I',
-            cnpj: row.cnpj || row.codigo,
-            ib: mapVal(row.ib),
-            cet1: mapVal(row.cet1),
-            ii: mapVal(row.ii),
-            icp: mapVal(row.icp),
-            roe: mapVal(row.roe),
-            roa: mapVal(row.roa),
-            rating: row.rating || 'SR',
-            fgc: row.fgc || 'nao_coberto',
-            
-            // Metadata fields
-            ativo_total: row.ativo_total !== undefined && row.ativo_total !== null && row.ativo_total !== '' ? Number(row.ativo_total) / 1000000 : null,
-            patrimonio_liquido: mapVal(row.patrimonio_liquido),
-            lucro_liquido: mapVal(row.lucro_liquido),
-            carteira_credito: row.carteira_credito !== undefined && row.carteira_credito !== null && row.carteira_credito !== '' ? Number(row.carteira_credito) / 1000000 : null,
-            segmento: row.segmento || 'S/S',
-            razao_alavancagem: mapVal(row.razao_alavancagem),
-            deposito_vista_funding: mapVal(row.deposito_vista_funding),
-            pcld: mapVal(row.pcld),
-            total_depositos: mapVal(row.total_depositos),
-            captacoes_totais: mapVal(row.captacoes_totais),
-            atraso_total: mapVal(row.atraso_total),
-            ldr: mapVal(row.ldr),
-            ie: mapVal(row.ie),
-            lcr: mapVal(row.lcr),
-          };
-        }) as BankData[];
-        setBanks(mappedBanks);
+      let allData: any[] = [];
+      let from = 0;
+      let to = 999;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('emissores_bancarios')
+          .select('*')
+          .range(from, to);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          from += 1000;
+          to += 1000;
+          
+          if (data.length < 1000) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
       }
+
+      const mappedBanks = allData.map(row => {
+        const mapVal = (v: any) => (v !== undefined && v !== null && v !== '') ? Number(v) : null;
+        return {
+          id: row.codigo,
+          name: row.nome || 'N/I',
+          cnpj: row.cnpj || row.codigo,
+          ib: mapVal(row.ib),
+          cet1: mapVal(row.cet1),
+          ii: mapVal(row.ii),
+          icp: mapVal(row.icp),
+          roe: mapVal(row.roe),
+          roa: mapVal(row.roa),
+          rating: row.rating || 'SR',
+          fgc: row.fgc || 'nao_coberto',
+          
+          // Metadata fields
+          ativo_total: row.ativo_total !== undefined && row.ativo_total !== null && row.ativo_total !== '' ? Number(row.ativo_total) / 1000000 : null,
+          patrimonio_liquido: mapVal(row.patrimonio_liquido),
+          lucro_liquido: mapVal(row.lucro_liquido),
+          carteira_credito: row.carteira_credito !== undefined && row.carteira_credito !== null && row.carteira_credito !== '' ? Number(row.carteira_credito) / 1000000 : null,
+          segmento: row.segmento || 'S/S',
+          razao_alavancagem: mapVal(row.razao_alavancagem),
+          deposito_vista_funding: mapVal(row.deposito_vista_funding),
+          pcld: mapVal(row.pcld),
+          total_depositos: mapVal(row.total_depositos),
+          captacoes_totais: mapVal(row.captacoes_totais),
+          atraso_total: mapVal(row.atraso_total),
+          ldr: mapVal(row.ldr),
+          ie: mapVal(row.ie),
+          lcr: mapVal(row.lcr),
+        };
+      }) as BankData[];
+      setBanks(mappedBanks);
     } catch (e) {
       console.error('Erro ao buscar emissores:', e);
     } finally {
