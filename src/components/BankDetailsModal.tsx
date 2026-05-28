@@ -3,7 +3,7 @@
 // ============================================================
 
 import { useState, useEffect } from 'react';
-import { X, Save, Sparkles, Check, AlertTriangle, Building2 } from 'lucide-react';
+import { X, Save, Check, AlertTriangle, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { BankAnalysis } from '@/types';
 import { getDimensions } from '@/lib/indicators';
@@ -184,8 +184,8 @@ export function BankDetailsModal({ analysis, onClose, onSaveSuccess }: BankDetai
 
           {/* Manual Input Fields Section */}
           <div className="flex flex-col gap-6 border-t border-border/40 pt-6 mt-4">
-            <h4 className="font-sans text-[11px] font-black uppercase tracking-widest text-foreground flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-foreground" /> Atributos de Ajuste Manual
+            <h4 className="font-sans text-[11px] font-black uppercase tracking-widest text-foreground">
+              Atributos de Ajuste Manual
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
