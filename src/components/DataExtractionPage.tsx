@@ -377,29 +377,33 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
   };
 
   return (
-    <div className="max-w-[1920px] mx-auto px-8 py-10">
+    <div className="max-w-[1920px] mx-auto px-8 py-6 h-[calc(100vh-155px)] flex flex-col overflow-hidden">
       {/* Header Section */}
-      <div className="max-w-4xl mb-10">
-        <h2 className="font-serif text-3xl font-bold tracking-tight text-foreground leading-tight mb-3">
-          Carga de Dados
-        </h2>
-        <p className="font-serif text-sm italic text-muted-foreground leading-relaxed mb-4">
-          Importe o scorecard consolidado para popular o banco de dados centralizado. O sistema realiza a extração completa e a consolidação de todos os dados regulatórios necessários do BACEN — e não apenas de 6 indicadores isolados — processando de forma integrada o balanço patrimonial, dados prudenciais e indicadores de risco dos emissores.
-        </p>
+      <div className="mb-6 shrink-0 flex items-start justify-between gap-8">
+        <div className="max-w-4xl">
+          <h2 className="font-serif text-3xl font-bold tracking-tight text-foreground leading-tight mb-2">
+            Carga de Dados
+          </h2>
+          <p className="font-serif text-xs italic text-muted-foreground leading-relaxed">
+            Importe o scorecard consolidado para popular o banco de dados centralizado. O sistema realiza a extração completa e a consolidação de todos os dados regulatórios necessários do BACEN — e não apenas de 6 indicadores isolados — processando de forma integrada o balanço patrimonial, dados prudenciais e indicadores de risco dos emissores.
+          </p>
+        </div>
         
-        <div className="flex items-center gap-2 font-sans text-[10px] font-bold uppercase tracking-widest text-foreground bg-muted/40 inline-flex px-3 py-1.5 border border-border/50">
-          <Calendar className="h-3.5 w-3.5" />
-          <span>Último Upload: {lastUpload ? lastUpload : 'Nenhum realizado'}</span>
+        <div className="flex-shrink-0 pt-1">
+          <div className="flex items-center gap-2 font-sans text-[10px] font-bold uppercase tracking-widest text-foreground bg-muted/40 px-3 py-2 border border-border/50">
+            <Calendar className="h-3.5 w-3.5" />
+            <span>Último Upload: {lastUpload ? lastUpload : 'Nenhum realizado'}</span>
+          </div>
         </div>
       </div>
 
       {/* Grid Layout for Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-0 overflow-hidden mb-4">
         
         {/* Left Column: Upload Area */}
-        <div className="lg:col-span-7 flex flex-col gap-6">
+        <div className="lg:col-span-7 flex flex-col h-full min-h-0">
           <div 
-            className={`relative border-2 border-dashed flex flex-col items-center justify-center p-10 transition-all duration-300 min-h-[300px] ${
+            className={`relative border-2 border-dashed flex-1 flex flex-col items-center justify-center p-8 transition-all duration-300 h-full ${
               dragActive ? 'border-foreground bg-muted/60 scale-[0.99]' : 'border-border/60 hover:border-foreground/50 bg-muted/10'
             } ${uploadStatus === 'success' ? 'border-emerald-500/30 bg-emerald-500/5' : ''} ${
               uploadStatus === 'error' ? 'border-destructive/30 bg-destructive/5' : ''
@@ -445,9 +449,9 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
         </div>
 
         {/* Right Column: Processing Panel & Context */}
-        <div className="lg:col-span-5 flex flex-col gap-6">
-          <div className="bg-muted/20 p-6 border border-border/50 flex flex-col gap-4">
-            <div className="flex items-center justify-between pb-2 border-b border-border/40">
+        <div className="lg:col-span-5 flex flex-col gap-6 h-full min-h-0">
+          <div className="flex-1 bg-muted/20 p-6 border border-border/50 flex flex-col gap-4 min-h-0">
+            <div className="flex items-center justify-between pb-2 border-b border-border/40 shrink-0">
               <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground">
                 Console de Auditoria ETL
               </h4>
@@ -459,20 +463,20 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
             </div>
             
             {logs.length > 0 ? (
-              <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[220px] font-mono text-[9px] leading-normal text-foreground/80 bg-black/5 dark:bg-black/40 p-4 border border-border/40 min-h-[160px] rounded-none">
+              <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto font-mono text-[9px] leading-normal text-foreground/80 bg-black/5 dark:bg-black/40 p-4 border border-border/40 rounded-none">
                 {logs.map((lg, i) => (
                   <div key={i} className="whitespace-pre-wrap">{lg}</div>
                 ))}
                 <div ref={consoleEndRef} />
               </div>
             ) : (
-              <div className="flex items-center justify-center font-mono text-[9px] italic text-muted-foreground bg-black/5 dark:bg-black/40 p-4 border border-border/40 min-h-[160px] rounded-none">
+              <div className="flex-1 flex items-center justify-center font-mono text-[9px] italic text-muted-foreground bg-black/5 dark:bg-black/40 p-4 border border-border/40 rounded-none">
                 &gt;_ Aguardando carga de arquivo CSV para iniciar ingestão...
               </div>
             )}
           </div>
 
-          <div className="bg-muted/10 p-6 border border-border/30 flex flex-col gap-3">
+          <div className="bg-muted/10 p-6 border border-border/30 flex flex-col gap-3 shrink-0">
             <h4 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground">
               Diretrizes de Ingestão
             </h4>
