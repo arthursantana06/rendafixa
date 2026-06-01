@@ -1,6 +1,7 @@
 import type { BankData, BankAnalysis, IndicatorKey, IndicatorResult, KnockoutLevel, ParametroIndicador, IndicatorConfig, QualityRating } from '@/types';
 import { INDICATORS, classifyIndicator, classifyIndicatorWithValue, getQualityScore, formatIndicatorValue, getDimensions } from './indicators';
 import { evaluateFormula } from './formulaParser';
+import { calculateScore, indicatorsConfig } from '@/services/MetricCalculatorService';
 
 /**
  * Computes the full analysis for a single bank.
@@ -27,18 +28,52 @@ export function analyzeBank(
     
     if (!isMissing) {
       const param = parameters?.[ind.key];
-      if (param) {
-        rating = classifyIndicatorWithValue(
-          param.direction,
-          value as number,
-          param.limite_muito_bom,
-          param.limite_bom,
-          param.limite_moderado
-        );
-      } else {
-        rating = classifyIndicator(ind.key, bank);
+      let hasCustomScore = false;
+      
+      if (param && param.formula_score && param.formula_score.trim() !== '') {
+        try {
+          const bindings: Record<string, number> = {
+            [ind.key]: value as number,
+            x: value as number
+          };
+          const evalScore = evaluateFormula(param.formula_score, bindings);
+          score = Math.max(0, Math.min(10, evalScore));
+          hasCustomScore = true;
+          
+          // Classify dynamically based on score thresholds for colors and knockouts
+          if (score >= 9.0) rating = 'muito_bom';
+          else if (score >= 7.0) rating = 'bom';
+          else if (score >= 4.0) rating = 'moderado';
+          else rating = 'ruim';
+        } catch (err) {
+          console.error(`Erro ao avaliar formula_score para ${ind.key}:`, err);
+        }
       }
-      score = getQualityScore(rating);
+      
+      if (!hasCustomScore) {
+        const config = indicatorsConfig[ind.key];
+        if (config) {
+          score = calculateScore(value, config.tipoCurva, config.piso, config.teto) / 10;
+          
+          if (score >= 9.0) rating = 'muito_bom';
+          else if (score >= 7.0) rating = 'bom';
+          else if (score >= 4.0) rating = 'moderado';
+          else rating = 'ruim';
+        } else {
+          if (param) {
+            rating = classifyIndicatorWithValue(
+              param.direction,
+              value as number,
+              param.limite_muito_bom,
+              param.limite_bom,
+              param.limite_moderado
+            );
+          } else {
+            rating = classifyIndicator(ind.key, bank);
+          }
+          score = getQualityScore(rating);
+        }
+      }
     }
 
     const displayValue = formatIndicatorValue(ind.key, bank);

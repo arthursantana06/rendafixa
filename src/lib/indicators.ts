@@ -18,7 +18,7 @@ export const DIMENSIONS: DimensionConfig[] = [
   {
     key: 'liquidez',
     label: 'Liquidez',
-    indicators: ['lcr']
+    indicators: ['proxy_liquidez_ial']
   },
   {
     key: 'qualidade_carteira',
@@ -34,6 +34,17 @@ export const DIMENSIONS: DimensionConfig[] = [
     key: 'porte',
     label: 'Porte',
     indicators: ['ativo_total', 'carteira_credito']
+  },
+  {
+    key: 'tendencia',
+    label: 'Tendência',
+    indicators: [
+      'tendencia_crescimento_carteira',
+      'tendencia_cet1',
+      'tendencia_roa',
+      'tendencia_ldr',
+      'tendencia_proxy_liquidez'
+    ]
   }
 ];
 
@@ -224,18 +235,93 @@ export const INDICATORS: IndicatorConfig[] = [
     },
   },
   {
-    key: 'lcr',
-    label: 'Índice de Liquidez de Curto Prazo (LCR)',
-    shortLabel: 'LCR',
-    description: 'Mede a capacidade do banco de sobreviver a um estresse de liquidez por 30 dias sem recorrer ao mercado ou ao BACEN. É uma das métricas mais diretas de risco de liquidez - relevante para emissores de CDBs e outros papéis de curto e médio prazo, cujos pagamentos dependem da capacidade de caixa do banco.',
+    key: 'proxy_liquidez_ial',
+    label: 'Proxy Liquidez IAL',
+    shortLabel: 'IAL',
+    description: 'Mede a relação de liquidez baseada no Proxy IAL (Indicador de Ativos Líquidos), que reflete a capacidade de liquidez em situações estressadas.',
     unit: '%',
     source: 'IF.data > Dados por Instituição > Prudencial > Liquidez',
-    sourceField: 'LCR - Índice de Liquidez de Curto Prazo',
+    sourceField: 'Proxy_Liquidez_IAL (%)',
     criteria: {
-      muito_bom: 'Acima de 150%: Excelente posição de liquidez. Amortecedor robusto para cenários de estresse.',
-      bom: 'Entre 120% e 150%: Posição confortável. Folga adequada acima do mínimo regulatório.',
-      moderado: 'Entre 100% e 120%: No limite regulatório. Pouca margem para absorção de choques de liquidez.',
-      ruim: 'Abaixo de 100%: Descumpre o mínimo regulatório. Risco elevado; instituição sob atenção do BACEN.',
+      muito_bom: 'Acima de 30%: Ampla margem de liquidez imediata disponível.',
+      bom: 'Entre 20% e 30%: Liquidez confortável e resiliente.',
+      moderado: 'Entre 10% e 20%: Posição de liquidez dentro dos padrões médios.',
+      ruim: 'Abaixo de 10%: Liquidez pressionada, demandando atenção operacional.',
+    },
+  },
+  {
+    key: 'tendencia_crescimento_carteira',
+    label: 'Tendência Crescimento Carteira',
+    shortLabel: 'Tend CC',
+    description: 'Avalia a taxa anual (%) de crescimento da carteira de crédito para determinar a direção de expansão e consistência comercial.',
+    unit: '%',
+    source: 'Calculado',
+    sourceField: 'Tendencia_Crescimento_Carteira (%)',
+    criteria: {
+      muito_bom: 'Acima de 15%: Forte expansão comercial e ganho de escala.',
+      bom: 'Entre 5% e 15%: Crescimento saudável e contínuo.',
+      moderado: 'Entre 0% e 5%: Crescimento tímido ou estabilidade operacional.',
+      ruim: 'Abaixo de 0%: Retração de carteira, encolhimento de mercado.',
+    },
+  },
+  {
+    key: 'tendencia_cet1',
+    label: 'Tendência CET1',
+    shortLabel: 'Tend CET1',
+    description: 'Avalia a variação anual em pontos percentuais (pp) do índice de capital principal (CET1) para acompanhar o nível de robustez patrimonial.',
+    unit: 'pp',
+    source: 'Calculado',
+    sourceField: 'Tendencia_CET1 (pp)',
+    criteria: {
+      muito_bom: 'Acima de 1 pp: Rápido fortalecimento do capital próprio principal.',
+      bom: 'Entre 0 pp e 1 pp: Capitalização estável a levemente crescente.',
+      moderado: 'Entre -1 pp e 0 pp: Leve queda de capitalização por consumo orgânico.',
+      ruim: 'Abaixo de -1 pp: Redução preocupante de capital de melhor qualidade.',
+    },
+  },
+  {
+    key: 'tendencia_roa',
+    label: 'Tendência ROA',
+    shortLabel: 'Tend ROA',
+    description: 'Avalia a variação anual em pontos percentuais (pp) do Retorno sobre Ativos (ROA) para diagnosticar tendências de rentabilidade interna.',
+    unit: 'pp',
+    source: 'Calculado',
+    sourceField: 'Tendencia_ROA (pp)',
+    criteria: {
+      muito_bom: 'Acima de 0.2 pp: Expansão expressiva de eficiência de rentabilidade.',
+      bom: 'Entre 0 pp e 0.2 pp: Rentabilidade mantida ou com leve melhora.',
+      moderado: 'Entre -0.2 pp e 0 pp: Leve queda de eficiência de rentabilidade.',
+      ruim: 'Abaixo de -0.2 pp: Queda preocupante e recorrente da margem operacional.',
+    },
+  },
+  {
+    key: 'tendencia_ldr',
+    label: 'Tendência LDR',
+    shortLabel: 'Tend LDR',
+    description: 'Avalia a variação anual em pontos percentuais (pp) do indicador Loan-to-Deposit Ratio (LDR) — relação entre crédito e captações. Quanto menor, mais favorável a liquidez.',
+    unit: 'pp',
+    source: 'Calculado',
+    sourceField: 'Tendencia_LDR (pp)',
+    criteria: {
+      muito_bom: 'Abaixo de -5 pp: Ótimo alívio da pressão de crédito sobre depósitos.',
+      bom: 'Entre -5 pp e 0 pp: Estabilidade ou melhora no balanço de funding.',
+      moderado: 'Entre 0 pp e 5 pp: Leve avanço no consumo do funding bancário.',
+      ruim: 'Acima de 5 pp: Piora sensível na folga de depósitos frente à concessão de crédito.',
+    },
+  },
+  {
+    key: 'tendencia_proxy_liquidez',
+    label: 'Tendência Proxy Liquidez',
+    shortLabel: 'Tend Proxy Liq',
+    description: 'Avalia a variação anual em pontos percentuais (pp) do Proxy Liquidez IAL para mensurar a direção e resiliência de caixa recente.',
+    unit: 'pp',
+    source: 'Calculado',
+    sourceField: 'Tendencia_Proxy_Liquidez (pp)',
+    criteria: {
+      muito_bom: 'Acima de 5 pp: Expansão considerável do colchão de liquidez.',
+      bom: 'Entre 0 pp e 5 pp: Estabilidade ou leve incremento de liquidez.',
+      moderado: 'Entre -5 pp e 0 pp: Redução controlada da liquidez disponível.',
+      ruim: 'Abaixo de -5 pp: Queda drástica de liquidez, gerando sinal de atenção.',
     },
   },
 ];
@@ -292,7 +378,12 @@ export function classifyIndicator(key: string, bank: BankData): QualityRating {
     case 'ativo_total': return classifyIndicatorWithValue('higher_is_better', value, 200, 30, 3);
     case 'carteira_credito': return classifyIndicatorWithValue('higher_is_better', value, 100, 10, 1);
     case 'ie': return classifyIndicatorWithValue('lower_is_better', value, 45, 55, 70);
-    case 'lcr': return classifyIndicatorWithValue('higher_is_better', value, 150, 120, 100);
+    case 'proxy_liquidez_ial': return classifyIndicatorWithValue('higher_is_better', value, 30, 20, 10);
+    case 'tendencia_crescimento_carteira': return classifyIndicatorWithValue('higher_is_better', value, 15, 5, 0);
+    case 'tendencia_cet1': return classifyIndicatorWithValue('higher_is_better', value, 1, 0, -1);
+    case 'tendencia_roa': return classifyIndicatorWithValue('higher_is_better', value, 0.2, 0, -0.2);
+    case 'tendencia_ldr': return classifyIndicatorWithValue('lower_is_better', value, -5, 0, 5);
+    case 'tendencia_proxy_liquidez': return classifyIndicatorWithValue('higher_is_better', value, 5, 0, -5);
     default: return 'moderado';
   }
 }
@@ -343,18 +434,39 @@ export function formatIndicatorValue(key: string, bank: BankData): string {
     case 'ativo_total': return `R$ ${Number(value).toFixed(1)} Bi`;
     case 'carteira_credito': return `R$ ${Number(value).toFixed(1)} Bi`;
     case 'ie': return `${Number(value).toFixed(1)}%`;
-    case 'lcr': return `${Number(value).toFixed(1)}%`;
+    case 'proxy_liquidez_ial': return `${Number(value).toFixed(1)}%`;
+    case 'tendencia_crescimento_carteira': {
+      const v = Number(value);
+      return `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+    }
+    case 'tendencia_cet1': {
+      const v = Number(value);
+      return `${v > 0 ? '+' : ''}${v.toFixed(2)} pp`;
+    }
+    case 'tendencia_roa': {
+      const v = Number(value);
+      return `${v > 0 ? '+' : ''}${v.toFixed(2)} pp`;
+    }
+    case 'tendencia_ldr': {
+      const v = Number(value);
+      return `${v > 0 ? '+' : ''}${v.toFixed(2)} pp`;
+    }
+    case 'tendencia_proxy_liquidez': {
+      const v = Number(value);
+      return `${v > 0 ? '+' : ''}${v.toFixed(2)} pp`;
+    }
     default: return `${Number(value).toFixed(1)}%`;
   }
 }
 
 export function getDefaultWeights(): Record<string, number> {
   return {
-    capital: 20.0,
-    liquidez: 20.0,
-    qualidade_carteira: 20.0,
-    resultado: 20.0,
-    porte: 20.0,
+    capital: 17.0,
+    liquidez: 17.0,
+    qualidade_carteira: 17.0,
+    resultado: 17.0,
+    porte: 17.0,
+    tendencia: 15.0,
     outros: 0.0
   };
 }
@@ -372,6 +484,11 @@ export function getDefaultKnockouts(): Record<string, 'none' | 'ruim' | 'moderad
     ativo_total: 'none',
     carteira_credito: 'none',
     ie: 'none',
-    lcr: 'none'
+    proxy_liquidez_ial: 'none',
+    tendencia_crescimento_carteira: 'none',
+    tendencia_cet1: 'none',
+    tendencia_roa: 'none',
+    tendencia_ldr: 'none',
+    tendencia_proxy_liquidez: 'none'
   };
 }

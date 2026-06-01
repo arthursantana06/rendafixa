@@ -37,11 +37,13 @@ async function run() {
 
   // 4. Seed default formulas
   const defaults = [
-    { key: 'capital', formula: '(ib_score + cet1_score + razao_alavancagem_score) / 3' },
-    { key: 'liquidez', formula: 'lcr_score' },
-    { key: 'qualidade_carteira', formula: '(ii_score + icp_score + deposito_vista_funding_score) / 3' },
-    { key: 'resultado', formula: '(roe_score + roa_score + ie_score) / 3' },
-    { key: 'porte', formula: '(ativo_total_score + carteira_credito_score) / 2' }
+    { key: 'capital', formula: '(cet1_score * 0.60) + (ib_score * 0.30) + (razao_alavancagem_score * 0.10)' },
+    { key: 'liquidez', formula: 'proxy_liquidez_ial_score' },
+    { key: 'qualidade_carteira', formula: '(ii_score * 0.5) + (icp_score * 0.25) + (deposito_vista_funding_score * 0.25)' },
+    { key: 'resultado', formula: '(roa_score * 0.40) + (roe_score * 0.30) + (ie_score * 0.30)' },
+    { key: 'porte', formula: '(ativo_total_score * 0.5) + (carteira_credito_score * 0.5)' },
+    { key: 'tendencia', formula: '(tendencia_crescimento_carteira_score + tendencia_cet1_score + tendencia_roa_score + tendencia_ldr_score + tendencia_proxy_liquidez_score) / 5' },
+    { key: 'score_final', formula: '((porte / (1.05 ^ tempo))) * (0.3 * capital + 0.2 * liquidez + 0.3 * qualidade_carteira + 0.2 * resultado) * 0.105' }
   ];
 
   console.log('Upserting default formulas...');

@@ -12,7 +12,7 @@ import { ScoreCalculationPage } from './ScoreCalculationPage';
 interface MethodologyPageProps {
   indicators?: IndicatorConfig[];
   parameters?: Record<IndicatorKey, ParametroIndicador>;
-  onUpdateParameter: (key: IndicatorKey, updates: Partial<ParametroIndicador>) => void;
+  onUpdateParameter: (key: IndicatorKey, updates: Partial<ParametroIndicador> & { newKey?: string }) => Promise<void> | void;
   onTogglePanel: () => void;
   isPanelOpen: boolean;
   weights: Record<IndicatorKey, number>;
@@ -58,6 +58,7 @@ export function MethodologyPage({
 }: MethodologyPageProps) {
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [isScoreCalcOpen, setIsScoreCalcOpen] = useState(false);
+  const [methodologyTab, setMethodologyTab] = useState<'gerais' | 'tendencia'>('gerais');
 
   if (isScoreCalcOpen) {
     return (
@@ -69,6 +70,7 @@ export function MethodologyPage({
         indicators={indicators}
         formulas={formulas}
         onUpdateFormulas={onUpdateFormulas}
+        onUpdateParameter={onUpdateParameter}
         onClose={() => setIsScoreCalcOpen(false)}
         tempo={tempo}
       />
@@ -223,21 +225,50 @@ export function MethodologyPage({
 
         {/* Right Column: Detailed Indicators */}
         <div className="lg:col-span-8 flex flex-col h-full min-h-0">
-          <div className="flex items-center justify-between border-b border-border/60 pb-3 mb-6 shrink-0">
-            <h3 className="font-sans text-[11px] font-bold uppercase tracking-widest text-foreground">
-              Indicadores e Parâmetros
-            </h3>
+          <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-6 shrink-0">
+            <div className="flex items-center gap-6">
+              <h3 className="font-sans text-[11px] font-black uppercase tracking-widest text-foreground">
+                Indicadores e Parâmetros
+              </h3>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setMethodologyTab('gerais')}
+                  className={`font-sans text-[10px] font-bold uppercase tracking-widest pb-1 border-b-2 transition-all cursor-pointer ${
+                    methodologyTab === 'gerais'
+                      ? 'border-foreground text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Gerais
+                </button>
+                <button
+                  onClick={() => setMethodologyTab('tendencia')}
+                  className={`font-sans text-[10px] font-bold uppercase tracking-widest pb-1 border-b-2 transition-all cursor-pointer ${
+                    methodologyTab === 'tendencia'
+                      ? 'border-foreground text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Tendência
+                </button>
+              </div>
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto pr-2 scroll-smooth flex flex-col gap-4">
-            {indicators.map((ind) => (
-              <IndicatorEditorialBlock 
-                key={ind.key} 
-                indicator={ind} 
-                parameter={parameters?.[ind.key]}
-                onUpdate={onUpdateParameter}
-              />
-            ))}
+            {indicators
+              .filter((ind) => {
+                const isTrend = ind.key.startsWith('tendencia_');
+                return methodologyTab === 'tendencia' ? isTrend : !isTrend;
+              })
+              .map((ind) => (
+                <IndicatorEditorialBlock 
+                  key={ind.key} 
+                  indicator={ind} 
+                  parameter={parameters?.[ind.key]}
+                  onUpdate={onUpdateParameter}
+                />
+              ))}
           </div>
         </div>
 

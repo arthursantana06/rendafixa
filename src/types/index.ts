@@ -27,10 +27,11 @@ export interface ParametroIndicador {
   description?: string;
   source?: string;
   col_planilha?: string;
+  formula_score?: string | null;
 }
 
 
-export type DimensionKey = 'capital' | 'liquidez' | 'qualidade_carteira' | 'resultado' | 'porte' | 'outros';
+export type DimensionKey = 'capital' | 'liquidez' | 'qualidade_carteira' | 'resultado' | 'porte' | 'tendencia' | 'outros';
 
 export interface DimensionConfig {
   key: DimensionKey;
@@ -63,7 +64,12 @@ export interface BankData {
   atraso_total?: number | null;
   ldr?: number | null;
   ie?: number | null;
-  lcr?: number | null;
+  proxy_liquidez_ial?: number | null;
+  tendencia_crescimento_carteira?: number | null;
+  tendencia_cet1?: number | null;
+  tendencia_roa?: number | null;
+  tendencia_ldr?: number | null;
+  tendencia_proxy_liquidez?: number | null;
 }
 
 export interface WeightConfig {

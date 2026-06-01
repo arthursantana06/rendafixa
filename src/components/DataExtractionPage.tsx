@@ -29,7 +29,12 @@ interface ParseResultRow {
   'ROE_Calculado (%)'?: string;
   'ROA_Calculado (%)'?: string;
   'Indice_Eficiencia (%)'?: string;
-  'LCR_Indice_Liquidez_Curto_Prazo (%)'?: string;
+  'Proxy_Liquidez_IAL (%)'?: string;
+  'Tendencia_Crescimento_Carteira (%)'?: string;
+  'Tendencia_CET1 (pp)'?: string;
+  'Tendencia_ROA (pp)'?: string;
+  'Tendencia_LDR (pp)'?: string;
+  'Tendencia_Proxy_Liquidez (pp)'?: string;
 }
 
 function parseNumber(value: any): number {
@@ -260,7 +265,12 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
               { key: 'ativo_total', label: 'Ativo Total', keywords: getColsFor('ativo_total', ['ativo total', 'ativos', 'ativo']) },
               { key: 'carteira_credito', label: 'Carteira de Crédito', keywords: getColsFor('carteira_credito', ['carteira de credito total', 'carteira de credito', 'carteira credito', 'credito']) },
               { key: 'ie', label: 'Índice de Eficiência', keywords: getColsFor('ie', ['indice eficiencia ie', 'indice eficiencia', 'eficiencia', 'ie']) },
-              { key: 'lcr', label: 'LCR (Liquidez Curto Prazo)', keywords: getColsFor('lcr', ['lcr', 'indice de liquidez de curto prazo', 'liquidez curto prazo', 'liquidez']) },
+              { key: 'proxy_liquidez_ial', label: 'Proxy Liquidez IAL', keywords: getColsFor('proxy_liquidez_ial', ['proxy liquidez ial', 'proxy_liquidez_ial', 'ial']) },
+              { key: 'tendencia_crescimento_carteira', label: 'Tendência Crescimento Carteira', keywords: getColsFor('tendencia_crescimento_carteira', ['tendencia crescimento carteira', 'tendencia_crescimento_carteira', 'tendencia cresc carteira']) },
+              { key: 'tendencia_cet1', label: 'Tendência CET1', keywords: getColsFor('tendencia_cet1', ['tendencia cet1', 'tendencia_cet1']) },
+              { key: 'tendencia_roa', label: 'Tendência ROA', keywords: getColsFor('tendencia_roa', ['tendencia roa', 'tendencia_roa']) },
+              { key: 'tendencia_ldr', label: 'Tendência LDR', keywords: getColsFor('tendencia_ldr', ['tendencia ldr', 'tendencia_ldr']) },
+              { key: 'tendencia_proxy_liquidez', label: 'Tendência Proxy Liquidez', keywords: getColsFor('tendencia_proxy_liquidez', ['tendencia proxy liquidez', 'tendencia_proxy_liquidez', 'tendencia liquidez']) },
               
               // Additional descriptive balanço columns
               { key: 'patrimonio_liquido', label: 'Patrimônio Líquido', keywords: ['patrimonio liquido', 'patrimonio_liquido', 'patrimonio'] },
@@ -296,26 +306,31 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
                 codigo,
                 nome: fixDoubleUtf8(String(row[colNome] || 'N/I').trim()),
                 cnpj: String(row['CNPJ'] || row['cnpj'] || codigo).trim(),
-                ativo_total: parseNumber(resolvedCols['ativo_total'] ? row[resolvedCols['ativo_total']!] : 0),
-                patrimonio_liquido: parseNumber(resolvedCols['patrimonio_liquido'] ? row[resolvedCols['patrimonio_liquido']!] : 0),
-                lucro_liquido: parseNumber(resolvedCols['lucro_liquido'] ? row[resolvedCols['lucro_liquido']!] : 0),
-                carteira_credito: parseNumber(resolvedCols['carteira_credito'] ? row[resolvedCols['carteira_credito']!] : 0),
+                ativo_total: parseNumber(resolvedCols['ativo_total'] ? row[resolvedCols['ativo_total']!] : 0) / 1000000,
+                patrimonio_liquido: parseNumber(resolvedCols['patrimonio_liquido'] ? row[resolvedCols['patrimonio_liquido']!] : 0) / 1000000,
+                lucro_liquido: parseNumber(resolvedCols['lucro_liquido'] ? row[resolvedCols['lucro_liquido']!] : 0) / 1000000,
+                carteira_credito: parseNumber(resolvedCols['carteira_credito'] ? row[resolvedCols['carteira_credito']!] : 0) / 1000000,
                 segmento: resolvedCols['segmento'] ? String(row[resolvedCols['segmento']!] || 'S/S').trim() : 'S/S',
                 ib: parseNumber(resolvedCols['ib'] ? row[resolvedCols['ib']!] : 0),
                 cet1: parseNumber(resolvedCols['cet1'] ? row[resolvedCols['cet1']!] : 0),
                 razao_alavancagem: parseNumber(resolvedCols['razao_alavancagem'] ? row[resolvedCols['razao_alavancagem']!] : 0),
                 deposito_vista_funding: parseNumber(resolvedCols['deposito_vista_funding'] ? row[resolvedCols['deposito_vista_funding']!] : 0),
-                pcld: parseNumber(resolvedCols['pcld'] ? row[resolvedCols['pcld']!] : 0),
-                total_depositos: parseNumber(resolvedCols['total_depositos'] ? row[resolvedCols['total_depositos']!] : 0),
-                captacoes_totais: parseNumber(resolvedCols['captacoes_totais'] ? row[resolvedCols['captacoes_totais']!] : 0),
-                atraso_total: parseNumber(resolvedCols['atraso_total'] ? row[resolvedCols['atraso_total']!] : 0),
+                pcld: parseNumber(resolvedCols['pcld'] ? row[resolvedCols['pcld']!] : 0) / 1000000,
+                total_depositos: parseNumber(resolvedCols['total_depositos'] ? row[resolvedCols['total_depositos']!] : 0) / 1000000,
+                captacoes_totais: parseNumber(resolvedCols['captacoes_totais'] ? row[resolvedCols['captacoes_totais']!] : 0) / 1000000,
+                atraso_total: parseNumber(resolvedCols['atraso_total'] ? row[resolvedCols['atraso_total']!] : 0) / 1000000,
                 ldr: parseNumber(resolvedCols['ldr'] ? row[resolvedCols['ldr']!] : 0),
                 ii: parseNumber(resolvedCols['ii'] ? row[resolvedCols['ii']!] : 0),
                 icp: parseNumber(resolvedCols['icp'] ? row[resolvedCols['icp']!] : 0),
                 roe: parseNumber(resolvedCols['roe'] ? row[resolvedCols['roe']!] : 0),
                 roa: parseNumber(resolvedCols['roa'] ? row[resolvedCols['roa']!] : 0),
                 ie: parseNumber(resolvedCols['ie'] ? row[resolvedCols['ie']!] : 0),
-                lcr: parseNumber(resolvedCols['lcr'] ? row[resolvedCols['lcr']!] : 0),
+                proxy_liquidez_ial: resolvedCols['proxy_liquidez_ial'] && row[resolvedCols['proxy_liquidez_ial']!] !== undefined && row[resolvedCols['proxy_liquidez_ial']!] !== '' ? parseNumber(row[resolvedCols['proxy_liquidez_ial']!]) : null,
+                tendencia_crescimento_carteira: resolvedCols['tendencia_crescimento_carteira'] && row[resolvedCols['tendencia_crescimento_carteira']!] !== undefined && row[resolvedCols['tendencia_crescimento_carteira']!] !== '' ? parseNumber(row[resolvedCols['tendencia_crescimento_carteira']!]) : null,
+                tendencia_cet1: resolvedCols['tendencia_cet1'] && row[resolvedCols['tendencia_cet1']!] !== undefined && row[resolvedCols['tendencia_cet1']!] !== '' ? parseNumber(row[resolvedCols['tendencia_cet1']!]) : null,
+                tendencia_roa: resolvedCols['tendencia_roa'] && row[resolvedCols['tendencia_roa']!] !== undefined && row[resolvedCols['tendencia_roa']!] !== '' ? parseNumber(row[resolvedCols['tendencia_roa']!]) : null,
+                tendencia_ldr: resolvedCols['tendencia_ldr'] && row[resolvedCols['tendencia_ldr']!] !== undefined && row[resolvedCols['tendencia_ldr']!] !== '' ? parseNumber(row[resolvedCols['tendencia_ldr']!]) : null,
+                tendencia_proxy_liquidez: resolvedCols['tendencia_proxy_liquidez'] && row[resolvedCols['tendencia_proxy_liquidez']!] !== undefined && row[resolvedCols['tendencia_proxy_liquidez']!] !== '' ? parseNumber(row[resolvedCols['tendencia_proxy_liquidez']!]) : null,
                 rating: 'SR',
                 fgc: 'coberto_250k'
               };
@@ -335,13 +350,42 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
             const chunkSize = 200;
             for (let i = 0; i < mappedBanks.length; i += chunkSize) {
               const chunk = mappedBanks.slice(i, i + chunkSize);
-              const { error: upsertError } = await supabase
+              let { error: upsertError } = await supabase
                 .from('emissores_bancarios')
                 .upsert(chunk, { onConflict: 'codigo' });
 
-              if (upsertError) {
+              // Fallback block if table has not been migrated yet
+              if (upsertError && (upsertError.message.includes('does not exist') || upsertError.code === '42703' || upsertError.message.includes('coluna'))) {
+                log('WARNING', `⚠️ Lote ${Math.floor(i / chunkSize) + 1} falhou: Colunas novas ausentes no banco. Ativando enquadramento legado (removendo tendências e mapeando IAL como LCR)...`);
+                
+                const fallbackChunk = chunk.map(item => {
+                  const copy = { ...item };
+                  // Rename proxy_liquidez_ial to lcr
+                  if (copy.proxy_liquidez_ial !== undefined && copy.proxy_liquidez_ial !== null) {
+                    copy.lcr = copy.proxy_liquidez_ial;
+                  }
+                  // Delete new columns
+                  delete copy.proxy_liquidez_ial;
+                  delete copy.tendencia_crescimento_carteira;
+                  delete copy.tendencia_cet1;
+                  delete copy.tendencia_roa;
+                  delete copy.tendencia_ldr;
+                  delete copy.tendencia_proxy_liquidez;
+                  return copy;
+                });
+
+                const { error: fallbackError } = await supabase
+                  .from('emissores_bancarios')
+                  .upsert(fallbackChunk, { onConflict: 'codigo' });
+                
+                if (fallbackError) {
+                  throw new Error(`Erro crítico no lote ${Math.floor(i / chunkSize) + 1} mesmo no modo legado: ${fallbackError.message}`);
+                }
+                upsertError = null;
+              } else if (upsertError) {
                 throw new Error(`Erro ao enviar lote ${Math.floor(i / chunkSize) + 1}: ${upsertError.message}`);
               }
+
               log('INFO', `Lote ${Math.floor(i / chunkSize) + 1}/${Math.ceil(mappedBanks.length / chunkSize)} enviado (${chunk.length} registros).`);
               await sleep(100);
             }
@@ -434,7 +478,7 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
               Upload do Scorecard Consolidado
             </h3>
             <p className="font-sans text-xs text-muted-foreground text-center max-w-md leading-relaxed">
-              Arraste e solte o arquivo <strong className="text-foreground">scorecard_emissores_final.csv</strong> aqui, ou clique para navegar nos seus arquivos.
+              Arraste e solte o arquivo <strong className="text-foreground">scorecard_emissores_master.csv</strong> aqui, ou clique para navegar nos seus arquivos.
             </p>
             
             <div className="mt-6 flex gap-2">
@@ -483,7 +527,7 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
             <ul className="flex flex-col gap-2 font-sans text-[11px] text-foreground/70 leading-relaxed">
               <li className="flex gap-2">
                 <span className="text-muted-foreground">—</span>
-                Estrutura compatível com os 12 indicadores cadastrados no banco (IB, CET1, II, ICP, ROE, ROA, RA, DV/F, AT, CC, IE, LCR).
+                Estrutura compatível com os 17 indicadores cadastrados no banco (IB, CET1, II, ICP, ROE, ROA, RA, DV/F, AT, CC, IE, IAL e as 5 Tendências).
               </li>
               <li className="flex gap-2">
                 <span className="text-muted-foreground">—</span>

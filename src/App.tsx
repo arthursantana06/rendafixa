@@ -34,12 +34,13 @@ function deriveShortLabel(label: string): string {
 }
 
 const DEFAULT_FORMULAS: Record<string, string> = {
-  capital: '(ib_score + cet1_score + razao_alavancagem_score) / 3',
-  liquidez: 'lcr_score',
-  qualidade_carteira: '(ii_score + icp_score + deposito_vista_funding_score) / 3',
-  resultado: '(roe_score + roa_score + ie_score) / 3',
-  porte: '(ativo_total_score + carteira_credito_score) / 2',
-  score_final: '(capital * 0.20) + (liquidez * 0.25) + (qualidade_carteira * 0.25) + (resultado * 0.20) + (porte * 0.10)'
+  capital: '(cet1_score * 0.60) + (ib_score * 0.30) + (razao_alavancagem_score * 0.10)',
+  liquidez: 'proxy_liquidez_ial_score',
+  qualidade_carteira: '(ii_score * 0.5) + (icp_score * 0.25) + (deposito_vista_funding_score * 0.25)',
+  resultado: '(roa_score * 0.40) + (roe_score * 0.30) + (ie_score * 0.30)',
+  porte: '(ativo_total_score * 0.5) + (carteira_credito_score * 0.5)',
+  tendencia: '(tendencia_crescimento_carteira_score + tendencia_cet1_score + tendencia_roa_score + tendencia_ldr_score + tendencia_proxy_liquidez_score) / 5',
+  score_final: '((porte / (1.05 ^ tempo))) * (0.3 * capital + 0.2 * liquidez + 0.3 * qualidade_carteira + 0.2 * resultado) * 0.105'
 };
 
 function App() {
@@ -95,10 +96,10 @@ function App() {
           fgc: row.fgc || 'nao_coberto',
           
           // Metadata fields
-          ativo_total: row.ativo_total !== undefined && row.ativo_total !== null && row.ativo_total !== '' ? Number(row.ativo_total) / 1000000 : null,
+          ativo_total: mapVal(row.ativo_total),
           patrimonio_liquido: mapVal(row.patrimonio_liquido),
           lucro_liquido: mapVal(row.lucro_liquido),
-          carteira_credito: row.carteira_credito !== undefined && row.carteira_credito !== null && row.carteira_credito !== '' ? Number(row.carteira_credito) / 1000000 : null,
+          carteira_credito: mapVal(row.carteira_credito),
           segmento: row.segmento || 'S/S',
           razao_alavancagem: mapVal(row.razao_alavancagem),
           deposito_vista_funding: mapVal(row.deposito_vista_funding),
@@ -108,7 +109,12 @@ function App() {
           atraso_total: mapVal(row.atraso_total),
           ldr: mapVal(row.ldr),
           ie: mapVal(row.ie),
-          lcr: mapVal(row.lcr),
+          proxy_liquidez_ial: mapVal(row.proxy_liquidez_ial),
+          tendencia_crescimento_carteira: mapVal(row.tendencia_crescimento_carteira),
+          tendencia_cet1: mapVal(row.tendencia_cet1),
+          tendencia_roa: mapVal(row.tendencia_roa),
+          tendencia_ldr: mapVal(row.tendencia_ldr),
+          tendencia_proxy_liquidez: mapVal(row.tendencia_proxy_liquidez),
         };
       }) as BankData[];
       setBanks(mappedBanks);
@@ -167,6 +173,7 @@ function App() {
           description: row.description || undefined,
           source: row.source || undefined,
           col_planilha: row.col_planilha || undefined,
+          formula_score: row.formula_score || null,
         };
         return acc;
       }, {} as Record<IndicatorKey, ParametroIndicador>);
@@ -282,6 +289,7 @@ function App() {
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.source !== undefined) dbUpdates.source = updates.source;
     if (updates.col_planilha !== undefined) dbUpdates.col_planilha = updates.col_planilha;
+    if (updates.formula_score !== undefined) dbUpdates.formula_score = updates.formula_score;
 
     const { error } = await supabase
       .from('parametros_indicadores')
