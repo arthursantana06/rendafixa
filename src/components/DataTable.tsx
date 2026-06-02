@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { INDICATORS, getQualityColor, getQualityDotColor } from '@/lib/indicators';
 import type { BankAnalysis, IndicatorKey, SortConfig, IndicatorConfig } from '@/types';
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, Check, X, Eye } from 'lucide-react';
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, Check, X, Eye, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface DataTableProps {
   analyses: BankAnalysis[];
@@ -27,8 +27,8 @@ export function DataTable({ analyses, indicators = INDICATORS, tempo, onTempoCha
   const [ratingFilter, setRatingFilter] = useState<'all' | 'investment' | 'speculative' | 'sr'>('all');
 
   // Column Selector States
-  const [visibleIndicators, setVisibleIndicators] = useState<Record<string, boolean>>({});
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   // Column Selector & Custom Indicators Config States (localStorage)
   const [indicatorsConfig, setIndicatorsConfig] = useState<string>(() => {
@@ -45,68 +45,95 @@ export function DataTable({ analyses, indicators = INDICATORS, tempo, onTempoCha
     setInputValue(tempo.toString());
   }, [tempo]);
 
-  // Synchronize indicator visibility defaults
+  // If no columns are stored in config, initialize with all indicators by default
   useEffect(() => {
-    setVisibleIndicators(prev => {
-      const copy = { ...prev };
-      let changed = false;
-      indicators.forEach(ind => {
-        if (copy[ind.key] === undefined) {
-          copy[ind.key] = true;
-          changed = true;
-        }
-      });
-      return changed ? copy : prev;
-    });
-  }, [indicators]);
+    if (!indicatorsConfig.trim() && indicators.length > 0) {
+      setIndicatorsConfig(indicators.map(ind => ind.shortLabel).join(', '));
+    }
+  }, [indicators, indicatorsConfig]);
 
+  // Single robust source of truth for active indicators based on short labels list
   const activeIndicators = useMemo(() => {
     if (!indicatorsConfig.trim()) {
-      return indicators.filter(ind => visibleIndicators[ind.key] !== false);
+      return indicators;
     }
 
     const tokens = indicatorsConfig.split(',')
       .map(s => s.trim().toLowerCase())
       .filter(Boolean);
 
-    const ordered: IndicatorConfig[] = [];
+    const list: IndicatorConfig[] = [];
     tokens.forEach(tok => {
-      const found = indicators.find(
-        ind => ind.key.toLowerCase() === tok || ind.shortLabel.toLowerCase() === tok
+      const found = indicators.find(ind => 
+        ind.shortLabel.toLowerCase() === tok || 
+        ind.key.toLowerCase() === tok
       );
-      if (found && !ordered.some(o => o.key === found.key)) {
-        ordered.push(found);
+      if (found && !list.some(o => o.key === found.key)) {
+        list.push(found);
       }
     });
 
-    return ordered.length > 0 ? ordered : indicators.filter(ind => visibleIndicators[ind.key] !== false);
-  }, [indicators, visibleIndicators, indicatorsConfig]);
+    return list.length > 0 ? list : indicators;
+  }, [indicators, indicatorsConfig]);
+
+  // Derived inactive indicators list for the popover checklist
+  const inactiveIndicators = useMemo(() => {
+    return indicators.filter(ind => !activeIndicators.some(active => active.key === ind.key));
+  }, [indicators, activeIndicators]);
 
   const handleToggleIndicator = (key: string, checked: boolean) => {
-    let currentKeys: string[] = [];
-    if (indicatorsConfig.trim()) {
-      const tokens = indicatorsConfig.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-      tokens.forEach(tok => {
-        const found = indicators.find(ind => ind.key.toLowerCase() === tok || ind.shortLabel.toLowerCase() === tok);
-        if (found) currentKeys.push(found.key);
-      });
-    } else {
-      currentKeys = indicators.filter(ind => visibleIndicators[ind.key] !== false).map(ind => ind.key);
-    }
-
+    let nextList = [...activeIndicators];
     if (checked) {
-      if (!currentKeys.map(k => k.toLowerCase()).includes(key.toLowerCase())) {
-        currentKeys.push(key);
+      const found = indicators.find(ind => ind.key === key);
+      if (found && !nextList.some(item => item.key === key)) {
+        nextList.push(found);
       }
     } else {
-      currentKeys = currentKeys.filter(k => k.toLowerCase() !== key.toLowerCase());
+      nextList = nextList.filter(item => item.key !== key);
     }
+    
+    const labels = nextList.map(ind => ind.shortLabel);
+    setIndicatorsConfig(labels.join(', '));
+  };
 
-    const labels = currentKeys.map(k => {
-      const found = indicators.find(ind => ind.key === k);
-      return found ? found.shortLabel : k;
-    });
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
 
+  const handleDragOver = (e: React.DragEvent, _index: number) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (targetIndex: number) => {
+    if (draggedIndex === null || draggedIndex === targetIndex) return;
+    const nextList = [...activeIndicators];
+    const [draggedItem] = nextList.splice(draggedIndex, 1);
+    nextList.splice(targetIndex, 0, draggedItem);
+    
+    const labels = nextList.map(ind => ind.shortLabel);
+    setIndicatorsConfig(labels.join(', '));
+    setDraggedIndex(null);
+  };
+
+  const handleMoveUp = (index: number) => {
+    if (index === 0) return;
+    const nextList = [...activeIndicators];
+    const temp = nextList[index];
+    nextList[index] = nextList[index - 1];
+    nextList[index - 1] = temp;
+    
+    const labels = nextList.map(ind => ind.shortLabel);
+    setIndicatorsConfig(labels.join(', '));
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index === activeIndicators.length - 1) return;
+    const nextList = [...activeIndicators];
+    const temp = nextList[index];
+    nextList[index] = nextList[index + 1];
+    nextList[index + 1] = temp;
+    
+    const labels = nextList.map(ind => ind.shortLabel);
     setIndicatorsConfig(labels.join(', '));
   };
 
@@ -233,26 +260,6 @@ export function DataTable({ analyses, indicators = INDICATORS, tempo, onTempoCha
             />
           </div>
 
-          <div className="relative w-48 shrink-0">
-            <Input
-              id="indicators-config"
-              placeholder="Colunas (ex: ib, cet1...)"
-              value={indicatorsConfig}
-              onChange={(e) => setIndicatorsConfig(e.target.value)}
-              className="h-8 bg-background border-border/60 font-sans text-xs rounded-none focus-visible:ring-1 focus-visible:ring-foreground transition-all uppercase placeholder:normal-case font-semibold tracking-wide pr-12"
-              title="Defina quais colunas exibir e sua ordem exata separadas por vírgula"
-            />
-            {indicatorsConfig.trim() && (
-              <button 
-                onClick={() => setIndicatorsConfig('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-[9px] font-sans font-black uppercase tracking-widest cursor-pointer hover:underline"
-                title="Restaurar padrão"
-              >
-                Limpar
-              </button>
-            )}
-          </div>
-
           <div className="flex flex-wrap items-center gap-1.5 select-none">
             {/* Quick Sort Select */}
             <select
@@ -334,36 +341,113 @@ export function DataTable({ analyses, indicators = INDICATORS, tempo, onTempoCha
           </div>
         </div>
 
-        {/* Dynamic Column Selector Dropdown */}
+        {/* Premium Columns Selector & Drag-and-Drop Reordering Popover */}
         {isColumnSelectorOpen && (
-          <div className="absolute left-8 xl:left-auto xl:right-40 top-12 z-50 w-72 border border-border bg-background shadow-xl p-4 flex flex-col gap-3 animate-in fade-in duration-200 rounded-none select-none">
+          <div className="absolute left-8 xl:left-auto xl:right-40 top-12 z-50 w-80 border border-foreground bg-background shadow-2xl p-4 flex flex-col gap-3 animate-in fade-in duration-200 rounded-none select-none">
             <div className="flex items-center justify-between pb-1.5 border-b border-border/40">
               <span className="font-sans text-[10px] font-black uppercase tracking-widest text-foreground">
-                Exibir Indicadores
+                Configurar Colunas
               </span>
               <button 
                 onClick={() => setIsColumnSelectorOpen(false)}
-                className="text-muted-foreground hover:text-foreground cursor-pointer text-[10px] font-bold uppercase font-sans"
+                className="text-muted-foreground hover:text-foreground cursor-pointer text-[9px] font-black uppercase tracking-widest font-sans hover:underline"
               >
                 Fechar
               </button>
             </div>
-            <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
-              {indicators.map(ind => (
-                <label 
-                  key={ind.key} 
-                  className="flex items-center gap-2.5 font-sans text-xs text-foreground cursor-pointer hover:bg-muted/50 p-1.5"
-                >
-                  <input
-                    type="checkbox"
-                    checked={activeIndicators.some(active => active.key === ind.key)}
-                    onChange={(e) => handleToggleIndicator(ind.key, e.target.checked)}
-                    className="h-3.5 w-3.5 border border-border bg-transparent accent-foreground cursor-pointer rounded-none"
-                  />
-                  <span className="font-medium text-foreground/90">{ind.label} ({ind.shortLabel})</span>
-                </label>
-              ))}
+
+            {/* Active Columns (Draggable & Reorderable List) */}
+            <div className="flex flex-col gap-1.5">
+              <span className="font-sans text-[8px] font-bold text-muted-foreground uppercase tracking-widest block px-1.5">
+                Colunas Ativas ({activeIndicators.length}) — Segure e Arraste ou Use as Setas
+              </span>
+              <div className="flex flex-col gap-1 max-h-60 overflow-y-auto pr-1 scrollbar-thin border border-border/10 bg-muted/5 p-1">
+                {activeIndicators.map((ind, idx) => (
+                  <div 
+                    key={ind.key}
+                    draggable
+                    onDragStart={() => handleDragStart(idx)}
+                    onDragOver={(e) => handleDragOver(e, idx)}
+                    onDrop={() => handleDrop(idx)}
+                    className={`flex items-center justify-between font-sans text-xs bg-background border border-border/40 hover:border-foreground/40 p-1.5 transition-all cursor-grab active:cursor-grabbing ${
+                      draggedIndex === idx ? 'opacity-40 border-dashed border-foreground' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {/* Drag Handle Icon */}
+                      <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 cursor-grab" />
+                      <input
+                        type="checkbox"
+                        checked={true}
+                        onChange={() => handleToggleIndicator(ind.key, false)}
+                        className="h-3.5 w-3.5 border border-border bg-transparent accent-foreground cursor-pointer rounded-none shrink-0"
+                      />
+                      <span className="font-semibold text-foreground/90 truncate pr-1" title={ind.label}>
+                        {ind.shortLabel}
+                      </span>
+                      <span className="text-[9.5px] text-muted-foreground truncate" title={ind.label}>
+                        {ind.label}
+                      </span>
+                    </div>
+
+                    {/* Setas (Move Up / Down) */}
+                    <div className="flex items-center gap-0.5 shrink-0 pl-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveUp(idx);
+                        }}
+                        disabled={idx === 0}
+                        className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-all cursor-pointer"
+                        title="Mover para cima"
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveDown(idx);
+                        }}
+                        disabled={idx === activeIndicators.length - 1}
+                        className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20 transition-all cursor-pointer"
+                        title="Mover para baixo"
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {activeIndicators.length === 0 && (
+                  <span className="text-[10px] text-muted-foreground italic text-center py-4">Nenhuma coluna ativa</span>
+                )}
+              </div>
             </div>
+
+            {/* Inactive Columns (Checklist to Add) */}
+            {inactiveIndicators.length > 0 && (
+              <div className="flex flex-col gap-1.5 border-t border-border/20 pt-2.5">
+                <span className="font-sans text-[8px] font-bold text-muted-foreground uppercase tracking-widest block px-1.5">
+                  Colunas Ocultas ({inactiveIndicators.length}) — Clique para Adicionar
+                </span>
+                <div className="flex flex-col gap-1 max-h-40 overflow-y-auto pr-1 scrollbar-thin p-1">
+                  {inactiveIndicators.map(ind => (
+                    <label 
+                      key={ind.key} 
+                      className="flex items-center gap-2.5 font-sans text-xs text-foreground cursor-pointer hover:bg-muted/40 p-1.5 border border-transparent hover:border-border/30 transition-all"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={false}
+                        onChange={() => handleToggleIndicator(ind.key, true)}
+                        className="h-3.5 w-3.5 border border-border bg-transparent accent-foreground cursor-pointer rounded-none"
+                      />
+                      <span className="font-semibold text-muted-foreground">{ind.shortLabel}</span>
+                      <span className="text-[10px] text-muted-foreground/75 truncate">{ind.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

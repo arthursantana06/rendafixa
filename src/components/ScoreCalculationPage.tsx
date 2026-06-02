@@ -151,6 +151,37 @@ const DEFAULT_FORMULAS: Record<string, string> = {
   tendencia: '(tendencia_crescimento_carteira_score + tendencia_cet1_score + tendencia_roa_score + tendencia_ldr_score + tendencia_proxy_liquidez_score) / 5',
   score_final: '((porte / (1.05 ^ tempo))) * (0.3 * capital + 0.2 * liquidez + 0.3 * qualidade_carteira + 0.2 * resultado) * 0.105'
 };
+
+const DEFAULT_INDICATOR_FORMULAS: Record<string, string> = {
+  ib: 'min(10, max(0, ((x - 8.0) / 7.0) * 10))',
+  cet1: 'min(10, max(0, ((x - 4.5) / 6.5) * 10))',
+  razao_alavancagem: 'min(10, max(0, ((x - 3.0) / 5.0) * 10))',
+  icp: 'min(10, max(0, ((x - 100.0) / 200.0) * 10))',
+  roe: 'min(10, max(0, ((x - 5.0) / 15.0) * 10))',
+  roa: 'min(10, max(0, ((x - 0.5) / 1.5) * 10))',
+  proxy_liquidez_ial: 'min(10, max(0, ((x - 10.0) / 20.0) * 10))',
+  deposito_vista_funding: 'min(10, max(0, ((x - 3.0) / 12.0) * 10))',
+  ii: 'min(10, max(0, ((8.0 - x) / 7.0) * 10))',
+  ldr: 'min(10, max(0, ((110.0 - x) / 40.0) * 10))',
+  ie: 'min(10, max(0, ((70.0 - x) / 30.0) * 10))',
+  ativo_total: 'min(10, max(0, (log(x) / 2.0) * 10))',
+  carteira_credito: 'min(10, max(0, ((log(x) + 0.30103) / 2.0) * 10))'
+};
+
+function getDefaultFormulaForIndicator(param: any): string {
+  if (DEFAULT_INDICATOR_FORMULAS[param.key]) {
+    return DEFAULT_INDICATOR_FORMULAS[param.key];
+  }
+  const teto = param.limite_muito_bom;
+  const piso = param.limite_moderado;
+  if (param.direction === 'higher_is_better') {
+    const diff = teto - piso;
+    return `min(10, max(0, ((x - ${piso.toFixed(1)}) / ${diff !== 0 ? diff.toFixed(1) : '1.0'}) * 10))`;
+  } else {
+    const diff = piso - teto;
+    return `min(10, max(0, ((${piso.toFixed(1)} - x) / ${diff !== 0 ? diff.toFixed(1) : '1.0'}) * 10))`;
+  }
+}
 interface SimulationFormulaInputProps {
   initialValue: string;
   onChange: (val: string) => void;
@@ -225,14 +256,7 @@ export function ScoreCalculationPage({
   const [playgroundVal, setPlaygroundVal] = useState<string>('14.0');
   const [formulaScoreState, setFormulaScoreState] = useState('');
 
-  // Sync formulaScoreState on variable selector change
-  useEffect(() => {
-    if (parameters && parameters[selectedDictKey]) {
-      setFormulaScoreState(parameters[selectedDictKey].formula_score || '');
-    } else {
-      setFormulaScoreState('');
-    }
-  }, [selectedDictKey, parameters]);
+
 
   const DICT_DEFAULT_VALUES: Record<string, string> = {
     ib: '14.0',
@@ -329,6 +353,20 @@ export function ScoreCalculationPage({
     };
   }, [selectedDictKey, parameters]);
 
+  // Sync formulaScoreState on variable selector change, pre-filling with equivalent formula
+  useEffect(() => {
+    const param = parameters?.[selectedDictKey];
+    if (param) {
+      if (param.formula_score && param.formula_score.trim() !== '') {
+        setFormulaScoreState(param.formula_score);
+      } else {
+        setFormulaScoreState(getDefaultFormulaForIndicator(param));
+      }
+    } else {
+      setFormulaScoreState(getDefaultFormulaForIndicator(activeParam));
+    }
+  }, [selectedDictKey, parameters, activeParam]);
+
   const playgroundResult = useMemo(() => {
     const numVal = parseFloat(playgroundVal);
     if (isNaN(numVal)) {
@@ -339,13 +377,13 @@ export function ScoreCalculationPage({
     let rating: QualityRating = 'moderado';
     let label = 'Moderado';
 
-    if (activeParam.formula_score && activeParam.formula_score.trim() !== '') {
+    if (formulaScoreState && formulaScoreState.trim() !== '') {
       try {
         const bindings = {
           [activeParam.key]: numVal,
           x: numVal
         };
-        score = evaluateFormula(activeParam.formula_score, bindings);
+        score = evaluateFormula(formulaScoreState, bindings);
         score = Math.max(0, Math.min(10, score));
         
         if (score >= 9.0) rating = 'muito_bom';
@@ -353,7 +391,7 @@ export function ScoreCalculationPage({
         else if (score >= 4.0) rating = 'moderado';
         else rating = 'ruim';
         
-        label = getQualityLabel(rating) + ' (Fórmula)';
+        label = getQualityLabel(rating);
       } catch (err: any) {
         return { score: 0, rating: 'ruim' as const, label: 'Erro na Fórmula' };
       }
@@ -367,7 +405,7 @@ export function ScoreCalculationPage({
         else if (score >= 4.0) rating = 'moderado';
         else rating = 'ruim';
         
-        label = getQualityLabel(rating) + ' (Contínuo)';
+        label = getQualityLabel(rating);
       } else {
         rating = classifyIndicatorWithValue(
           activeParam.direction,
@@ -382,7 +420,7 @@ export function ScoreCalculationPage({
     }
 
     return { score, rating, label };
-  }, [playgroundVal, activeParam]);
+  }, [playgroundVal, activeParam, formulaScoreState]);
 
   useEffect(() => {
     if (formulas && Object.keys(formulas).length > 0) {
@@ -450,6 +488,24 @@ export function ScoreCalculationPage({
       ...prev,
       [focusedDim]: newText
     }));
+
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + token.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 50);
+  };
+
+  const insertDictToken = (token: string) => {
+    const textarea = document.getElementById('textarea-dict-formula') as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = formulaScoreState || '';
+    const newText = text.substring(0, start) + token + text.substring(end);
+
+    setFormulaScoreState(newText);
 
     setTimeout(() => {
       textarea.focus();
@@ -645,7 +701,7 @@ export function ScoreCalculationPage({
   };
 
   return (
-    <div className="max-w-[1920px] mx-auto px-8 py-6 h-[calc(100vh-155px)] flex flex-col overflow-hidden relative">
+    <div className="max-w-[1920px] mx-auto px-8 py-6 h-[calc(100vh_-_200px)] flex flex-col overflow-hidden relative">
       
       <div className="flex items-start justify-between mb-5 shrink-0 gap-8">
         <div className="max-w-4xl">
@@ -1158,7 +1214,7 @@ export function ScoreCalculationPage({
             {simulatorData ? (
               <div className="flex-1 flex flex-col md:flex-row gap-5 min-h-0 mt-0.5 overflow-hidden">
                 {/* Left Column - Selection & Scores Details */}
-                <div className="w-full md:w-[280px] shrink-0 flex flex-col gap-3 overflow-y-auto pr-1 scrollbar-thin h-[calc(100vh-310px)]">
+                <div className="w-full md:w-[280px] shrink-0 flex flex-col gap-3 overflow-y-auto pr-1 scrollbar-thin h-full max-h-full min-h-0">
                   {/* Selected Bank Metadata Card */}
                   <div className="bg-muted/10 p-4 border border-border/30 rounded-none">
                     <div className="flex flex-col gap-1.5">
@@ -1258,7 +1314,7 @@ export function ScoreCalculationPage({
                 </div>
 
                 {/* Right Column - Horizontal Dashboard Grid */}
-                <div className="flex-1 flex flex-col gap-3 min-h-0 pl-0 md:pl-5 border-t md:border-t-0 md:border-l border-border/30 pt-3 md:pt-0 overflow-y-auto pr-2 scrollbar-thin h-[calc(100vh-310px)]">
+                <div className="flex-1 flex flex-col gap-3 min-h-0 pl-0 md:pl-5 border-t md:border-t-0 md:border-l border-border/30 pt-3 md:pt-0 overflow-y-auto pr-2 scrollbar-thin h-full max-h-full min-h-0">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 overflow-hidden">
                     {simulatorData.steps.filter(s => s.dimKey !== 'score_final').map((step, idx) => {
                       return (
@@ -1363,7 +1419,7 @@ export function ScoreCalculationPage({
             <div className="flex flex-col md:flex-row gap-5 flex-1 min-h-0 mt-0.5 overflow-hidden">
               
               {/* Column 1 - Variables Sidebar List */}
-              <div className="w-full md:w-[200px] shrink-0 border-b md:border-b-0 md:border-r border-border/30 pb-3 md:pb-0 md:pr-4 overflow-y-auto scrollbar-thin flex flex-col gap-3 select-none h-[calc(100vh-310px)]">
+              <div className="w-full md:w-[200px] shrink-0 border-b md:border-b-0 md:border-r border-border/30 pb-3 md:pb-0 md:pr-4 overflow-y-auto scrollbar-thin flex flex-col gap-3 select-none h-full max-h-full min-h-0">
                 {VARIABLE_GROUPS.map(group => (
                   <div key={group.label} className="flex flex-col gap-1">
                     <span className="font-sans text-[7px] font-black text-muted-foreground/60 uppercase tracking-widest block px-1.5">
@@ -1396,8 +1452,8 @@ export function ScoreCalculationPage({
 
               {/* Main Content Area - Split in Two Horizontal Columns */}
               <div className="flex-1 flex flex-col lg:flex-row gap-5 min-h-0 h-full overflow-hidden">
-                {/* Column 2 - Middle Column: Variable Identification & Quality Ranges */}
-                <div className="flex-1 flex flex-col gap-3 min-h-0 select-text overflow-y-auto pr-2 scrollbar-thin h-[calc(100vh-310px)]">
+                {/* Column 2 - Middle Column: Variable Identification, Parametric Ruler & Translation */}
+                <div className="flex-1 flex flex-col gap-3 min-h-0 select-text overflow-y-auto pr-2 scrollbar-thin h-full max-h-full min-h-0">
                   {/* Variable Identification Card */}
                   <div className="border border-border/40 bg-muted/5 p-3 flex flex-col gap-2 rounded-none relative shrink-0">
                     <span className="font-sans text-[8px] font-black uppercase tracking-widest text-muted-foreground bg-muted border border-border/30 px-1.5 py-0.5 rounded-none self-start select-none">
@@ -1506,30 +1562,122 @@ export function ScoreCalculationPage({
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Column 3 - Right Column: Formula Custom Translation & Live Playground */}
-                <div className="flex-1 flex flex-col gap-3 min-h-0 pl-0 lg:pl-6 border-t lg:border-t-0 lg:border-l border-border/30 pt-4 lg:pt-0 select-text overflow-y-auto pr-2 scrollbar-thin h-[calc(100vh-310px)]">
-                  {/* Custom Algebraic Formula Card */}
+                  {/* Tradução por Expressão Algébrica Card */}
                   <div className="flex flex-col gap-2 border border-border/30 bg-muted/5 p-3 rounded-none shrink-0">
                     <span className="font-sans text-[8px] font-black uppercase tracking-widest text-foreground select-none">
-                      Tradução por Expressão Algébrica (Opcional)
+                      Tradução por Expressão Algébrica
                     </span>
                     <p className="font-sans text-[10px] text-muted-foreground leading-relaxed -mt-1 select-none">
-                      Insira uma fórmula de nota customizada utilizando o próprio nome da variável (ou <code className="bg-muted px-1 rounded text-foreground font-mono">x</code>). Ex: <code className="font-mono text-foreground font-semibold text-[9.5px]">min(10, max(0, (x - 11) * 2.5))</code>
+                      Define rigorosamente como a métrica bruta é convertida em nota contínua. Edite e use os atalhos matemáticos abaixo.
                     </p>
                     
                     <div className="flex flex-col gap-2 mt-1">
-                      <textarea
-                        value={formulaScoreState}
-                        onChange={(e) => setFormulaScoreState(e.target.value)}
-                        placeholder="Ex: min(10, max(0, (x - 11) * 2.5))"
-                        rows={2}
-                        className="w-full bg-background border border-border/60 hover:border-foreground focus:border-foreground text-foreground font-mono text-xs px-2.5 py-2 outline-none rounded-none transition-all resize-none focus-visible:ring-1 focus-visible:ring-foreground select-text"
-                      />
+                      <div className="flex flex-col gap-2 bg-muted/15 border border-border/40 p-3 rounded-none mb-1 select-none">
+                        <div className="flex items-center justify-between border-b border-border/10 pb-1.5 mb-1">
+                          <span className="font-sans text-[8px] font-black uppercase tracking-widest text-foreground">
+                            Fluxo de Tradução Matemática
+                          </span>
+                          <span className="font-mono text-[9px] font-bold text-muted-foreground">
+                            {activeParam.key} ➔ {activeParam.key}_score
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1.5 font-sans text-xs text-muted-foreground leading-relaxed">
+                          <p className="text-[11px] leading-relaxed">
+                            A nota classificada <code className="font-mono bg-muted px-1 py-0.5 text-foreground font-bold text-[9px]">{activeParam.key}_score</code> é obtida aplicando a função contínua sobre o valor bruto <code className="font-mono bg-muted px-1 py-0.5 text-foreground font-bold text-[9px]">{activeParam.key}</code> (inserido na equação como <code className="font-mono bg-muted px-1 py-0.5 text-foreground font-bold text-[9px]">{activeParam.key}</code> ou <code className="font-mono bg-muted px-1 py-0.5 text-foreground font-bold text-[9px]">x</code>).
+                          </p>
+                          <div className="bg-background border border-border/10 p-2.5 rounded-none flex flex-col gap-1 text-[11px] mt-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-foreground">Equação Geral:</span>
+                              <code className="font-mono font-black text-foreground">
+                                {activeParam.key}_score = f(x)
+                              </code>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1 border-t border-border/5 pt-1">
+                              <span className="font-bold text-foreground">Cálculo no Playground:</span>
+                              <span>
+                                Se <code className="font-mono bg-muted px-1 text-foreground">{activeParam.key} = {playgroundVal}</code>
+                              </span>
+                              <ArrowRight className="h-3 w-3 inline text-muted-foreground" />
+                              <span className="font-mono font-black text-foreground bg-muted/30 px-1.5 py-0.5 border border-border/10">
+                                {activeParam.key}_score = {playgroundResult.score.toFixed(2)} / 10.0
+                              </span>
+                              <span className="text-[9.5px] text-muted-foreground">
+                                (ou {(playgroundResult.score * 10).toFixed(0)} na escala contínua de 0 a 100)
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start border border-border/60 bg-background hover:border-foreground focus-within:border-foreground p-2 rounded-none transition-all">
+                        <span className="font-mono text-xs font-black text-blue-600 dark:text-blue-400 shrink-0 pt-2 px-1 select-none">
+                          {activeParam.key}_score =
+                        </span>
+                        <textarea
+                          id="textarea-dict-formula"
+                          value={formulaScoreState}
+                          onChange={(e) => setFormulaScoreState(e.target.value)}
+                          placeholder="Ex: min(10, max(0, (x - 11) * 2.5))"
+                          rows={2}
+                          className="w-full bg-transparent border-none text-foreground font-mono text-xs p-1 outline-none resize-none focus:ring-0 focus-visible:ring-0 select-text"
+                        />
+                      </div>
+
+                      {/* Mathematical Helper Panel for Variable Translation */}
+                      <div className="flex flex-col gap-2 border-t border-border/20 pt-3 mt-1.5 select-none">
+                        <span className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
+                          Atalhos de Modelagem
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {STANDARD_OPERATORS.map(op => (
+                            <button
+                              key={op}
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertDictToken(op)}
+                              className="font-mono text-[10px] font-bold px-2.5 py-1 border border-border/60 bg-background hover:border-foreground hover:bg-foreground/5 cursor-pointer rounded-xs active:scale-95 transition-all text-foreground"
+                            >
+                              {op}
+                            </button>
+                          ))}
+                          {MATH_FUNCTIONS.map(fn => (
+                            <button
+                              key={fn.key}
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertDictToken(fn.key)}
+                              className="font-mono text-[8.5px] font-bold px-2 py-1 border border-border/60 bg-background hover:border-foreground hover:bg-foreground/5 cursor-pointer rounded-xs active:scale-95 transition-all text-foreground"
+                              title={fn.label}
+                            >
+                              {fn.key.replace('(', '')}()
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => insertDictToken('x')}
+                            className="font-mono text-[9px] font-bold px-2.5 py-1 border border-blue-500/20 bg-blue-500/5 hover:border-blue-500 hover:bg-blue-500/10 cursor-pointer rounded-xs active:scale-95 transition-all text-blue-600 dark:text-blue-400"
+                            title="Inserir variável bruta (x)"
+                          >
+                            x
+                          </button>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => insertDictToken(activeParam.key)}
+                            className="font-mono text-[9px] font-bold px-2.5 py-1 border border-blue-500/20 bg-blue-500/5 hover:border-blue-500 hover:bg-blue-500/10 cursor-pointer rounded-xs active:scale-95 transition-all text-blue-600 dark:text-blue-400"
+                            title={`Inserir chave bruta (${activeParam.key})`}
+                          >
+                            {activeParam.key}
+                          </button>
+                        </div>
+                      </div>
 
                       {(() => {
-                        const hasChanges = (formulaScoreState || '').trim() !== (activeParam.formula_score || '').trim();
+                        const defaultFormula = getDefaultFormulaForIndicator(activeParam);
+                        const savedFormula = activeParam.formula_score || '';
+                        const hasChanges = (formulaScoreState || '').trim() !== (savedFormula || defaultFormula).trim();
                         const syntaxError = formulaScoreState.trim() !== '' ? validateFormulaSyntax(formulaScoreState, [activeParam.key, 'x']) : null;
                         
                         return (
@@ -1544,41 +1692,55 @@ export function ScoreCalculationPage({
                               )}
                             </div>
                             
-                            {hasChanges && (
-                              <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5">
+                              {savedFormula.trim() !== '' && (
                                 <button
-                                  onClick={() => setFormulaScoreState(activeParam.formula_score || '')}
-                                  className="px-2.5 py-1 text-[8px] font-sans font-black uppercase tracking-widest border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer rounded-none"
+                                  onClick={() => setFormulaScoreState(defaultFormula)}
+                                  className="px-2 py-1 text-[8px] font-sans font-black uppercase tracking-widest border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer rounded-none"
+                                  title="Restaurar fórmula padrão da Metodologia"
                                 >
-                                  Descartar
+                                  Restaurar Padrão
                                 </button>
-                                <button
-                                  onClick={async () => {
-                                    if (syntaxError) return;
-                                    setIsSaving(true);
-                                    try {
-                                      await onUpdateParameter(activeParam.key, {
-                                        formula_score: formulaScoreState.trim() === '' ? null : formulaScoreState.trim()
-                                      });
-                                    } catch (err) {
-                                      console.error(err);
-                                    } finally {
-                                      setIsSaving(false);
-                                    }
-                                  }}
-                                  disabled={isSaving || syntaxError !== null}
-                                  className="px-2.5 py-1 text-[8px] font-sans font-black uppercase tracking-widest bg-foreground text-background border border-foreground hover:bg-foreground/90 disabled:opacity-50 cursor-pointer rounded-none font-bold"
-                                >
-                                  {isSaving ? 'Salvando...' : 'Salvar Formula'}
-                                </button>
-                              </div>
-                            )}
+                              )}
+                              {hasChanges && (
+                                <>
+                                  <button
+                                    onClick={() => setFormulaScoreState(savedFormula || defaultFormula)}
+                                    className="px-2 py-1 text-[8px] font-sans font-black uppercase tracking-widest border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer rounded-none"
+                                  >
+                                    Descartar
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (syntaxError) return;
+                                      setIsSaving(true);
+                                      try {
+                                        await onUpdateParameter(activeParam.key, {
+                                          formula_score: formulaScoreState.trim()
+                                        });
+                                      } catch (err) {
+                                        console.error(err);
+                                      } finally {
+                                        setIsSaving(false);
+                                      }
+                                    }}
+                                    disabled={isSaving || syntaxError !== null}
+                                    className="px-2.5 py-1 text-[8px] font-sans font-black uppercase tracking-widest bg-foreground text-background border border-foreground hover:bg-foreground/90 disabled:opacity-50 cursor-pointer rounded-none font-bold"
+                                  >
+                                    {isSaving ? 'Salvando...' : 'Salvar Formula'}
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         );
                       })()}
                     </div>
                   </div>
+                </div>
 
+                {/* Column 3 - Right Column: Live Playground & MetricCalculatorService widget */}
+                <div className="flex-1 flex flex-col gap-3 min-h-0 pl-0 lg:pl-6 border-t lg:border-t-0 lg:border-l border-border/30 pt-4 lg:pt-0 select-text overflow-y-auto pr-2 scrollbar-thin h-full max-h-full min-h-0">
                   {/* Live Playground Card */}
                   <div className="border border-border/30 bg-muted/5 p-3 flex flex-col gap-2.5 rounded-none shrink-0 select-none">
                     <span className="font-sans text-[8px] font-black uppercase tracking-widest text-foreground">
@@ -1666,88 +1828,88 @@ export function ScoreCalculationPage({
                     if (!continuousConfig && !isCustomFormulaActive) return null;
 
                     return (
-                      <div className="border border-blue-500/25 bg-blue-500/[0.02] p-4 flex flex-col gap-3 rounded-none shrink-0 select-none">
-                        <div className="flex items-center justify-between border-b border-blue-500/10 pb-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                            <span className="font-sans text-[8.5px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                              Calculadora Contínua (MetricCalculatorService)
+                        <div className="border border-border/40 bg-muted/5 p-4 flex flex-col gap-3 rounded-none shrink-0 select-none">
+                          <div className="flex items-center justify-between border-b border-border/10 pb-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/45" />
+                              <span className="font-sans text-[8.5px] font-black uppercase tracking-widest text-foreground">
+                                Calculadora Contínua (MetricCalculatorService)
+                              </span>
+                            </div>
+                            <span className="font-sans text-[7px] font-bold uppercase tracking-wider bg-background text-muted-foreground px-2 py-0.5 rounded-none border border-border/20">
+                              {isCustomFormulaActive ? 'Tradução Reativa' : 'Sem Cliff Effect'}
                             </span>
                           </div>
-                          <span className="font-sans text-[7px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-none">
-                            {isCustomFormulaActive ? 'Tradução Reativa' : 'Sem Cliff Effect'}
-                          </span>
-                        </div>
 
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex flex-col gap-1 max-w-[60%]">
-                            <span className="font-sans text-[8px] font-bold text-muted-foreground uppercase tracking-wider">
-                              {isCustomFormulaActive ? 'Expressão Algébrica Ativa' : 'Curva Matemática Ativa'}
-                            </span>
-                            {isCustomFormulaActive ? (
-                              isCustomFormulaValid ? (
-                                <div className="flex flex-col gap-1">
-                                  <code className="font-mono text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/5 px-2 py-0.5 border border-blue-500/10 self-start truncate max-w-full" title={formulaScoreState}>
-                                    {formulaScoreState}
-                                  </code>
-                                  <span className="text-[7.5px] text-emerald-500 font-sans font-bold">✓ Avaliação Reativa Ativa</span>
-                                </div>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex flex-col gap-1 max-w-[60%]">
+                              <span className="font-sans text-[8px] font-bold text-muted-foreground uppercase tracking-wider">
+                                {isCustomFormulaActive ? 'Expressão Algébrica Ativa' : 'Curva Matemática Ativa'}
+                              </span>
+                              {isCustomFormulaActive ? (
+                                isCustomFormulaValid ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <code className="font-mono text-[9px] font-bold text-foreground bg-background px-2 py-0.5 border border-border/10 self-start truncate max-w-full" title={formulaScoreState}>
+                                      {formulaScoreState}
+                                    </code>
+                                    <span className="text-[7.5px] text-muted-foreground font-sans font-medium">✓ Avaliação Reativa Ativa</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-[8px] font-sans text-rose-500 font-bold block bg-rose-500/5 px-2 py-0.5 border border-rose-500/10 self-start">
+                                    ⚠️ Sintaxe Inválida
+                                  </span>
+                                )
                               ) : (
-                                <span className="text-[8px] font-sans text-rose-500 font-bold block bg-rose-500/5 px-2 py-0.5 border border-rose-500/10 self-start">
-                                  ⚠️ Sintaxe Inválida
-                                </span>
-                              )
-                            ) : (
-                              <div className="flex flex-col gap-0.5">
-                                <code className="font-mono text-[9.5px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/5 px-2 py-0.5 border border-blue-500/10 self-start">
-                                  {continuousConfig?.tipoCurva}
-                                </code>
-                                <div className="flex gap-2 text-[8px] text-muted-foreground mt-0.5">
-                                  <span>Piso: <strong>{continuousConfig?.piso}</strong></span>
-                                  <span>|</span>
-                                  <span>Teto: <strong>{continuousConfig?.teto}</strong></span>
+                                <div className="flex flex-col gap-0.5">
+                                  <code className="font-mono text-[9.5px] font-bold text-foreground bg-background px-2 py-0.5 border border-border/10 self-start">
+                                    {continuousConfig?.tipoCurva}
+                                  </code>
+                                  <div className="flex gap-2 text-[8px] text-muted-foreground mt-0.5">
+                                    <span>Piso: <strong>{continuousConfig?.piso}</strong></span>
+                                    <span>|</span>
+                                    <span>Teto: <strong>{continuousConfig?.teto}</strong></span>
+                                  </div>
                                 </div>
+                              )}
+                              {formulaErrorMsg && (
+                                <span className="text-[7.5px] font-sans font-bold text-rose-500 mt-0.5 block truncate max-w-full" title={formulaErrorMsg}>
+                                  Erro: {formulaErrorMsg}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <div className="flex flex-col items-end">
+                                <span className="font-sans text-[6px] font-black uppercase tracking-widest text-muted-foreground">Score Contínuo</span>
+                                <span className="font-serif text-xl font-black text-foreground leading-none mt-0.5">
+                                  {continuousScore.toFixed(2)}
+                                </span>
+                                <span className="font-sans text-[6px] text-muted-foreground font-semibold mt-0.5">escala 0-100</span>
                               </div>
-                            )}
-                            {formulaErrorMsg && (
-                              <span className="text-[7.5px] font-sans font-bold text-rose-500 mt-0.5 block truncate max-w-full" title={formulaErrorMsg}>
-                                Erro: {formulaErrorMsg}
-                              </span>
-                            )}
+                              
+                              <div className="h-10 w-10 shrink-0 rounded-none border border-foreground/30 flex items-center justify-center relative bg-background">
+                                <span className="font-mono text-[10px] font-black text-foreground">
+                                  {Math.round(continuousScore)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-3">
-                            <div className="flex flex-col items-end">
-                              <span className="font-sans text-[6px] font-black uppercase tracking-widest text-muted-foreground">Score Contínuo</span>
-                              <span className="font-serif text-xl font-black text-foreground leading-none mt-0.5">
-                                {continuousScore.toFixed(2)}
-                              </span>
-                              <span className="font-sans text-[6px] text-muted-foreground font-semibold mt-0.5">escala 0-100</span>
+                          {/* Horizontal Progress Bar */}
+                          <div className="flex flex-col gap-1 mt-1">
+                            <div className="w-full bg-muted/20 h-1.5 rounded-none border border-border/10 overflow-hidden relative">
+                              <div 
+                                className="bg-foreground h-full transition-all duration-300" 
+                                style={{ width: `${continuousScore}%` }} 
+                              />
                             </div>
-                            
-                            <div className="h-10 w-10 shrink-0 rounded-full border-2 border-blue-500/30 flex items-center justify-center relative shadow-sm">
-                              <span className="font-mono text-[10px] font-black text-blue-600 dark:text-blue-400">
-                                {Math.round(continuousScore)}
-                              </span>
+                            <div className="flex justify-between text-[7px] text-muted-foreground font-mono">
+                              <span>0.0</span>
+                              <span>50.0</span>
+                              <span>100.0</span>
                             </div>
                           </div>
                         </div>
-
-                        {/* Horizontal Progress Bar */}
-                        <div className="flex flex-col gap-1 mt-1">
-                          <div className="w-full bg-muted/20 h-1.5 rounded-none border border-border/10 overflow-hidden relative">
-                            <div 
-                              className="bg-blue-500 h-full transition-all duration-300 shadow-xs" 
-                              style={{ width: `${continuousScore}%` }} 
-                            />
-                          </div>
-                          <div className="flex justify-between text-[7px] text-muted-foreground font-mono">
-                            <span>0.0</span>
-                            <span>50.0</span>
-                            <span>100.0</span>
-                          </div>
-                        </div>
-                      </div>
                     );
                   })()}
                 </div>

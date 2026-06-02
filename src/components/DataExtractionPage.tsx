@@ -421,7 +421,7 @@ export function DataExtractionPage({ onUploadSuccess }: { onUploadSuccess?: () =
   };
 
   return (
-    <div className="max-w-[1920px] mx-auto px-8 py-6 h-[calc(100vh-155px)] flex flex-col overflow-hidden">
+    <div className="max-w-[1920px] mx-auto px-8 py-6 h-[calc(100vh_-_200px)] flex flex-col overflow-hidden">
       {/* Header Section */}
       <div className="mb-6 shrink-0 flex items-start justify-between gap-8">
         <div className="max-w-4xl">
