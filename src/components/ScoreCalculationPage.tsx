@@ -1158,7 +1158,7 @@ export function ScoreCalculationPage({
             {simulatorData ? (
               <div className="flex-1 flex flex-col md:flex-row gap-5 min-h-0 mt-0.5 overflow-hidden">
                 {/* Left Column - Selection & Scores Details */}
-                <div className="w-full md:w-[280px] shrink-0 flex flex-col gap-3 overflow-y-auto pr-1 scrollbar-thin h-full">
+                <div className="w-full md:w-[280px] shrink-0 flex flex-col gap-3 overflow-y-auto pr-1 scrollbar-thin h-[calc(100vh-310px)]">
                   {/* Selected Bank Metadata Card */}
                   <div className="bg-muted/10 p-4 border border-border/30 rounded-none">
                     <div className="flex flex-col gap-1.5">
@@ -1258,7 +1258,7 @@ export function ScoreCalculationPage({
                 </div>
 
                 {/* Right Column - Horizontal Dashboard Grid */}
-                <div className="flex-1 flex flex-col gap-3 min-h-0 pl-0 md:pl-5 border-t md:border-t-0 md:border-l border-border/30 pt-3 md:pt-0 overflow-y-auto pr-2 scrollbar-thin h-full">
+                <div className="flex-1 flex flex-col gap-3 min-h-0 pl-0 md:pl-5 border-t md:border-t-0 md:border-l border-border/30 pt-3 md:pt-0 overflow-y-auto pr-2 scrollbar-thin h-[calc(100vh-310px)]">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 overflow-hidden">
                     {simulatorData.steps.filter(s => s.dimKey !== 'score_final').map((step, idx) => {
                       return (
@@ -1363,7 +1363,7 @@ export function ScoreCalculationPage({
             <div className="flex flex-col md:flex-row gap-5 flex-1 min-h-0 mt-0.5 overflow-hidden">
               
               {/* Column 1 - Variables Sidebar List */}
-              <div className="w-full md:w-[200px] shrink-0 border-b md:border-b-0 md:border-r border-border/30 pb-3 md:pb-0 md:pr-4 overflow-y-auto scrollbar-thin flex flex-col gap-3 select-none h-full">
+              <div className="w-full md:w-[200px] shrink-0 border-b md:border-b-0 md:border-r border-border/30 pb-3 md:pb-0 md:pr-4 overflow-y-auto scrollbar-thin flex flex-col gap-3 select-none h-[calc(100vh-310px)]">
                 {VARIABLE_GROUPS.map(group => (
                   <div key={group.label} className="flex flex-col gap-1">
                     <span className="font-sans text-[7px] font-black text-muted-foreground/60 uppercase tracking-widest block px-1.5">
@@ -1397,7 +1397,7 @@ export function ScoreCalculationPage({
               {/* Main Content Area - Split in Two Horizontal Columns */}
               <div className="flex-1 flex flex-col lg:flex-row gap-5 min-h-0 h-full overflow-hidden">
                 {/* Column 2 - Middle Column: Variable Identification & Quality Ranges */}
-                <div className="flex-1 flex flex-col gap-3 min-h-0 select-text overflow-y-auto pr-2 scrollbar-thin h-full">
+                <div className="flex-1 flex flex-col gap-3 min-h-0 select-text overflow-y-auto pr-2 scrollbar-thin h-[calc(100vh-310px)]">
                   {/* Variable Identification Card */}
                   <div className="border border-border/40 bg-muted/5 p-3 flex flex-col gap-2 rounded-none relative shrink-0">
                     <span className="font-sans text-[8px] font-black uppercase tracking-widest text-muted-foreground bg-muted border border-border/30 px-1.5 py-0.5 rounded-none self-start select-none">
@@ -1509,7 +1509,7 @@ export function ScoreCalculationPage({
                 </div>
 
                 {/* Column 3 - Right Column: Formula Custom Translation & Live Playground */}
-                <div className="flex-1 flex flex-col gap-3 min-h-0 pl-0 lg:pl-6 border-t lg:border-t-0 lg:border-l border-border/30 pt-4 lg:pt-0 select-text overflow-y-auto pr-2 scrollbar-thin h-full">
+                <div className="flex-1 flex flex-col gap-3 min-h-0 pl-0 lg:pl-6 border-t lg:border-t-0 lg:border-l border-border/30 pt-4 lg:pt-0 select-text overflow-y-auto pr-2 scrollbar-thin h-[calc(100vh-310px)]">
                   {/* Custom Algebraic Formula Card */}
                   <div className="flex flex-col gap-2 border border-border/30 bg-muted/5 p-3 rounded-none shrink-0">
                     <span className="font-sans text-[8px] font-black uppercase tracking-widest text-foreground select-none">
@@ -1632,11 +1632,38 @@ export function ScoreCalculationPage({
                   {(() => {
                     const continuousConfig = indicatorsConfig[activeParam.key];
                     const numVal = parseFloat(playgroundVal);
-                    const continuousScore = (continuousConfig && !isNaN(numVal)) 
-                      ? calculateScore(numVal, continuousConfig.tipoCurva, continuousConfig.piso, continuousConfig.teto) 
-                      : 0;
                     
-                    if (!continuousConfig) return null;
+                    let continuousScore = 0;
+                    let isCustomFormulaActive = false;
+                    let isCustomFormulaValid = false;
+                    let formulaErrorMsg: string | null = null;
+
+                    if (formulaScoreState && formulaScoreState.trim() !== '') {
+                      isCustomFormulaActive = true;
+                      const syntaxError = validateFormulaSyntax(formulaScoreState, [activeParam.key, 'x']);
+                      if (syntaxError === null) {
+                        isCustomFormulaValid = true;
+                        if (!isNaN(numVal)) {
+                          try {
+                            const bindings = {
+                              [activeParam.key]: numVal,
+                              x: numVal
+                            };
+                            const discreteScore = evaluateFormula(formulaScoreState, bindings);
+                            const clampedDiscrete = Math.max(0, Math.min(10, discreteScore));
+                            continuousScore = clampedDiscrete * 10;
+                          } catch (e: any) {
+                            formulaErrorMsg = e.message || 'Erro de cálculo.';
+                          }
+                        }
+                      } else {
+                        formulaErrorMsg = syntaxError;
+                      }
+                    } else if (continuousConfig && !isNaN(numVal)) {
+                      continuousScore = calculateScore(numVal, continuousConfig.tipoCurva, continuousConfig.piso, continuousConfig.teto);
+                    }
+
+                    if (!continuousConfig && !isCustomFormulaActive) return null;
 
                     return (
                       <div className="border border-blue-500/25 bg-blue-500/[0.02] p-4 flex flex-col gap-3 rounded-none shrink-0 select-none">
@@ -1648,21 +1675,45 @@ export function ScoreCalculationPage({
                             </span>
                           </div>
                           <span className="font-sans text-[7px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-none">
-                            Sem Cliff Effect
+                            {isCustomFormulaActive ? 'Tradução Reativa' : 'Sem Cliff Effect'}
                           </span>
                         </div>
 
                         <div className="flex items-center justify-between gap-4">
-                          <div className="flex flex-col gap-1">
-                            <span className="font-sans text-[8px] font-bold text-muted-foreground uppercase tracking-wider">Curva Matemática Ativa</span>
-                            <code className="font-mono text-[9.5px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/5 px-2 py-0.5 border border-blue-500/10 self-start">
-                              {continuousConfig.tipoCurva}
-                            </code>
-                            <div className="flex gap-2 text-[9px] text-muted-foreground mt-0.5">
-                              <span>Piso: <strong>{continuousConfig.piso}</strong></span>
-                              <span>|</span>
-                              <span>Teto: <strong>{continuousConfig.teto}</strong></span>
-                            </div>
+                          <div className="flex flex-col gap-1 max-w-[60%]">
+                            <span className="font-sans text-[8px] font-bold text-muted-foreground uppercase tracking-wider">
+                              {isCustomFormulaActive ? 'Expressão Algébrica Ativa' : 'Curva Matemática Ativa'}
+                            </span>
+                            {isCustomFormulaActive ? (
+                              isCustomFormulaValid ? (
+                                <div className="flex flex-col gap-1">
+                                  <code className="font-mono text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/5 px-2 py-0.5 border border-blue-500/10 self-start truncate max-w-full" title={formulaScoreState}>
+                                    {formulaScoreState}
+                                  </code>
+                                  <span className="text-[7.5px] text-emerald-500 font-sans font-bold">✓ Avaliação Reativa Ativa</span>
+                                </div>
+                              ) : (
+                                <span className="text-[8px] font-sans text-rose-500 font-bold block bg-rose-500/5 px-2 py-0.5 border border-rose-500/10 self-start">
+                                  ⚠️ Sintaxe Inválida
+                                </span>
+                              )
+                            ) : (
+                              <div className="flex flex-col gap-0.5">
+                                <code className="font-mono text-[9.5px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/5 px-2 py-0.5 border border-blue-500/10 self-start">
+                                  {continuousConfig?.tipoCurva}
+                                </code>
+                                <div className="flex gap-2 text-[8px] text-muted-foreground mt-0.5">
+                                  <span>Piso: <strong>{continuousConfig?.piso}</strong></span>
+                                  <span>|</span>
+                                  <span>Teto: <strong>{continuousConfig?.teto}</strong></span>
+                                </div>
+                              </div>
+                            )}
+                            {formulaErrorMsg && (
+                              <span className="text-[7.5px] font-sans font-bold text-rose-500 mt-0.5 block truncate max-w-full" title={formulaErrorMsg}>
+                                Erro: {formulaErrorMsg}
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-3">
