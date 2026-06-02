@@ -78,7 +78,7 @@ export function MethodologyPage({
   }
 
   return (
-    <div className="max-w-[1920px] mx-auto px-8 py-6 h-[calc(100vh_-_200px)] flex flex-col overflow-hidden">
+    <div className="max-w-[1920px] mx-auto px-8 py-6 h-full min-h-0 flex flex-col overflow-hidden">
       
       {/* Header Section */}
       <div className="flex items-start justify-between mb-6 shrink-0 gap-8">

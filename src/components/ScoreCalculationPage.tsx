@@ -701,7 +701,7 @@ export function ScoreCalculationPage({
   };
 
   return (
-    <div className="max-w-[1920px] mx-auto px-8 py-6 h-[calc(100vh_-_200px)] flex flex-col overflow-hidden relative">
+    <div className="max-w-[1920px] mx-auto px-8 py-6 h-full min-h-0 flex flex-col overflow-hidden relative">
       
       <div className="flex items-start justify-between mb-5 shrink-0 gap-8">
         <div className="max-w-4xl">
@@ -1314,52 +1314,55 @@ export function ScoreCalculationPage({
                 </div>
 
                 {/* Right Column - Horizontal Dashboard Grid */}
-                <div className="flex-1 flex flex-col gap-3 min-h-0 pl-0 md:pl-5 border-t md:border-t-0 md:border-l border-border/30 pt-3 md:pt-0 overflow-y-auto pr-2 scrollbar-thin h-full max-h-full min-h-0">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 overflow-hidden">
-                    {simulatorData.steps.filter(s => s.dimKey !== 'score_final').map((step, idx) => {
-                      return (
-                        <div 
-                          key={step.dimKey} 
-                          className="border border-border/40 p-3.5 bg-muted/5 hover:border-foreground/30 transition-all rounded-none flex flex-col justify-between min-h-[145px] h-auto"
-                        >
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-sans text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Etapa {idx + 1}</span>
-                              <span className="font-mono text-xs font-black text-foreground">{step.result.toFixed(2)}</span>
+                <div className="flex-1 flex flex-col gap-3 min-h-0 pl-0 md:pl-5 border-t md:border-t-0 md:border-l border-border/30 pt-3 md:pt-0 overflow-hidden h-full max-h-full">
+                  {/* Scrollable steps container */}
+                  <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin min-h-0 mb-1 flex flex-col gap-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {simulatorData.steps.filter(s => s.dimKey !== 'score_final').map((step, idx) => {
+                        return (
+                          <div 
+                            key={step.dimKey} 
+                            className="border border-border/40 p-3.5 bg-muted/5 hover:border-foreground/30 transition-all rounded-none flex flex-col justify-between min-h-[145px] h-auto"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-sans text-[8px] font-bold text-muted-foreground uppercase tracking-widest">Etapa {idx + 1}</span>
+                                <span className="font-mono text-xs font-black text-foreground">{step.result.toFixed(2)}</span>
+                              </div>
+                              <h4 className="font-serif text-xs font-bold text-foreground truncate mb-1.5">{step.dimLabel}</h4>
+                              
+                              {/* Editable Simulation Formula */}
+                              <div className="bg-background border border-border/60 font-mono text-[9.5px] text-foreground p-1 rounded-none flex items-center justify-between overflow-hidden mb-1.5 relative">
+                                <SimulationFormulaInput
+                                  initialValue={simulationFormulas[step.dimKey] ?? step.formula}
+                                  onChange={(val) => setSimulationFormulas(prev => ({ ...prev, [step.dimKey]: val }))}
+                                  className="w-full bg-transparent font-mono text-[9.5px] text-foreground font-bold p-1 outline-none focus-visible:ring-0 select-text border-none pr-8"
+                                  title="Fórmula de Simulação (Altere livremente para testar!)"
+                                />
+                                <span className="text-muted-foreground shrink-0 font-bold bg-background/90 pl-1 z-10 absolute right-1">➔ {step.result.toFixed(2)}</span>
+                              </div>
                             </div>
-                            <h4 className="font-serif text-xs font-bold text-foreground truncate mb-1.5">{step.dimLabel}</h4>
-                            
-                            {/* Editable Simulation Formula */}
-                            <div className="bg-background border border-border/60 font-mono text-[9.5px] text-foreground p-1 rounded-none flex items-center justify-between overflow-hidden mb-1.5 relative">
-                              <SimulationFormulaInput
-                                initialValue={simulationFormulas[step.dimKey] ?? step.formula}
-                                onChange={(val) => setSimulationFormulas(prev => ({ ...prev, [step.dimKey]: val }))}
-                                className="w-full bg-transparent font-mono text-[9.5px] text-foreground font-bold p-1 outline-none focus-visible:ring-0 select-text border-none pr-8"
-                                title="Fórmula de Simulação (Altere livremente para testar!)"
-                              />
-                              <span className="text-muted-foreground shrink-0 font-bold bg-background/90 pl-1 z-10 absolute right-1">➔ {step.result.toFixed(2)}</span>
-                            </div>
+
+                            {step.variablesUsed.length > 0 && (
+                              <div className="flex flex-wrap gap-1 border-t border-border/10 pt-1.5 overflow-x-auto scrollbar-none">
+                                {step.variablesUsed.map(v => (
+                                  <span key={v.key} className="font-sans text-[8px] text-muted-foreground bg-background px-1 py-0.5 border border-border/20 rounded-none flex items-center gap-0.5 shrink-0" title={`${v.key} = ${v.val}`}>
+                                    <code className="font-mono text-foreground/75 font-semibold text-[8px]">{v.key}</code>
+                                    <strong className="font-mono text-foreground font-black">{v.val}</strong>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {step.errorMsg && (
+                              <span className="font-sans text-[8px] text-rose-500 mt-1 leading-tight block font-bold">
+                                Erro: {step.errorMsg}
+                              </span>
+                            )}
                           </div>
-
-                          {step.variablesUsed.length > 0 && (
-                            <div className="flex flex-wrap gap-1 border-t border-border/10 pt-1.5 overflow-x-auto scrollbar-none">
-                              {step.variablesUsed.map(v => (
-                                <span key={v.key} className="font-sans text-[8px] text-muted-foreground bg-background px-1 py-0.5 border border-border/20 rounded-none flex items-center gap-0.5 shrink-0" title={`${v.key} = ${v.val}`}>
-                                  <code className="font-mono text-foreground/75 font-semibold text-[8px]">{v.key}</code>
-                                  <strong className="font-mono text-foreground font-black">{v.val}</strong>
-                                </span>
-                              ))}
-                            </div>
-                          )}
-
-                          {step.errorMsg && (
-                            <span className="font-sans text-[8px] text-rose-500 mt-1 leading-tight block font-bold">
-                              Erro: {step.errorMsg}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Score Final strip */}
@@ -1379,7 +1382,7 @@ export function ScoreCalculationPage({
                             initialValue={simulationFormulas['score_final'] ?? finalStep.formula}
                             onChange={(val) => setSimulationFormulas(prev => ({ ...prev, score_final: val }))}
                             className="w-full bg-transparent font-mono text-[10px] text-foreground font-bold p-1 px-2 outline-none focus-visible:ring-0 select-text border-none pr-8"
-                            title="Fórmula de Simulação do Score Final"
+                            title="Fórmula de Simulação del Score Final"
                           />
                           <span className="text-muted-foreground shrink-0 font-bold bg-background/90 pl-1 z-10 absolute right-2">➔ {finalStep.result.toFixed(2)}</span>
                         </div>

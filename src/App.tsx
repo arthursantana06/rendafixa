@@ -333,8 +333,16 @@ function App() {
           onSubTabChange={setActiveSubTab}
         />
 
-        <main className="flex-1 overflow-y-auto w-full relative">
-          <div className="max-w-[1920px] mx-auto w-full pb-12">
+        <main className={`flex-1 w-full relative ${
+          activeSubTab === 'metodologia' || activeSubTab === 'extracao'
+            ? 'overflow-hidden flex flex-col min-h-0' 
+            : 'overflow-y-auto'
+        }`}>
+          <div className={`max-w-[1920px] mx-auto w-full ${
+            activeSubTab === 'metodologia' || activeSubTab === 'extracao'
+              ? 'flex-1 min-h-0 flex flex-col overflow-hidden h-full'
+              : 'pb-12'
+          }`}>
           {activeMainTab === 'emissor' && activeSubTab === 'analise' && (
             <>
               {isLoading && (
