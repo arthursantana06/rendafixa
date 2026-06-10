@@ -32,8 +32,13 @@ export function tokenize(input: string): Token[] {
       continue;
     }
     if (char === '*') {
-      tokens.push({ type: 'MULTIPLY', value: char });
-      i++;
+      if (i + 1 < input.length && input[i + 1] === '*') {
+        tokens.push({ type: 'POWER', value: '**' });
+        i += 2;
+      } else {
+        tokens.push({ type: 'MULTIPLY', value: char });
+        i++;
+      }
       continue;
     }
     if (char === '/') {

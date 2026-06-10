@@ -2,7 +2,7 @@
 // HEADER COMPONENT - Editorial Style (Two-Tier Navigation)
 // ============================================================
 
-import { Building2, BookOpen, Database } from 'lucide-react';
+import { Building2, BookOpen, Database, Sliders } from 'lucide-react';
 import type { MainTab, SubTab } from '@/types';
 
 interface HeaderProps {
@@ -14,6 +14,7 @@ interface HeaderProps {
 
 const MAIN_TABS: { id: MainTab; label: string; enabled: boolean }[] = [
   { id: 'emissor', label: 'Emissor', enabled: true },
+  { id: 'indexador', label: 'Indexador', enabled: true },
 ];
 
 const SUB_TABS: { id: SubTab; label: string; icon: React.ReactNode }[] = [
@@ -21,6 +22,12 @@ const SUB_TABS: { id: SubTab; label: string; icon: React.ReactNode }[] = [
   { id: 'metodologia', label: 'Metodologia', icon: <BookOpen className="h-3.5 w-3.5" /> },
   { id: 'extracao', label: 'Dados', icon: <Database className="h-3.5 w-3.5" /> },
 ];
+
+const INDEXADOR_SUB_TABS: { id: SubTab; label: string; icon: React.ReactNode }[] = [
+  { id: 'analise', label: 'Otimização por Indexador', icon: <Sliders className="h-3.5 w-3.5" /> },
+  { id: 'extracao', label: 'Dados Macroeconômicos', icon: <Database className="h-3.5 w-3.5" /> },
+];
+
 
 export function Header({ 
   activeMainTab, 
@@ -67,6 +74,33 @@ export function Header({
           <div className="flex h-10 items-center justify-between px-8 bg-muted/5">
             <div className="flex gap-8 h-full">
               {SUB_TABS.map((tab) => {
+                const isActive = activeSubTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => onSubTabChange(tab.id)}
+                    className={`relative h-full flex items-center gap-2 px-1 font-sans text-[11px] font-bold uppercase tracking-widest transition-colors ${
+                      isActive
+                        ? 'text-foreground font-black'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {activeMainTab === 'indexador' && (
+          <div className="flex h-10 items-center justify-between px-8 bg-muted/5">
+            <div className="flex gap-8 h-full">
+              {INDEXADOR_SUB_TABS.map((tab) => {
                 const isActive = activeSubTab === tab.id;
                 return (
                   <button

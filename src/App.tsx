@@ -9,6 +9,8 @@ import { Header } from '@/components/Header';
 import { DataTable } from '@/components/DataTable';
 import { MethodologyPage } from '@/components/MethodologyPage';
 import { DataExtractionPage } from '@/components/DataExtractionPage';
+import { IndexerPage } from '@/components/IndexerPage';
+import { IndexerDataPage } from '@/components/IndexerDataPage';
 import { BankDetailsModal } from '@/components/BankDetailsModal';
 import { analyzeAllBanks } from '@/lib/analysis';
 import { INDICATORS, getDefaultWeights, getDefaultKnockouts } from '@/lib/indicators';
@@ -334,12 +336,12 @@ function App() {
         />
 
         <main className={`flex-1 w-full relative ${
-          activeSubTab === 'metodologia' || activeSubTab === 'extracao'
+          activeMainTab === 'emissor' && (activeSubTab === 'metodologia' || activeSubTab === 'extracao')
             ? 'overflow-hidden flex flex-col min-h-0' 
             : 'overflow-y-auto'
         }`}>
           <div className={`max-w-[1920px] mx-auto w-full ${
-            activeSubTab === 'metodologia' || activeSubTab === 'extracao'
+            activeMainTab === 'emissor' && (activeSubTab === 'metodologia' || activeSubTab === 'extracao')
               ? 'flex-1 min-h-0 flex flex-col overflow-hidden h-full'
               : 'pb-12'
           }`}>
@@ -407,6 +409,9 @@ function App() {
           )}
           
           {activeMainTab === 'emissor' && activeSubTab === 'extracao' && <DataExtractionPage onUploadSuccess={fetchBanks} />}
+          
+          {activeMainTab === 'indexador' && activeSubTab === 'analise' && <IndexerPage />}
+          {activeMainTab === 'indexador' && activeSubTab === 'extracao' && <IndexerDataPage />}
           </div>
         </main>
 

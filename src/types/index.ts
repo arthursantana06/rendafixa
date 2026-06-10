@@ -106,11 +106,32 @@ export interface SortConfig {
   direction: SortDirection;
 }
 
-export type MainTab = 'emissor' | 'titulos' | 'carteiras' | 'mercado';
+export type MainTab = 'emissor' | 'indexador' | 'titulos' | 'carteiras' | 'mercado';
 export type SubTab = 'analise' | 'metodologia' | 'extracao' | 'score';
 
 export interface FormulaDimensao {
   dimension_key: string;
   formula: string;
   updated_at?: string;
+}
+
+export interface MacroScenario {
+  key: string;
+  label: string;
+  juros_atuais: number;
+  expectativa_juros_bacen_2029: number;
+  juros_futuros_d1f29: number;
+  valor_taxa_prefixada_2029: number;
+  taxa_media_historica: number;
+  is_custom?: boolean;
+}
+
+export interface OptimizerConfig {
+  profile: 'conservador' | 'moderado' | 'arrojado';
+  horizon: 'curto' | 'medio' | 'longo';
+  mult_ipca: number;
+  mult_pre: number;
+  threshold_pre: number;
+  cds_threshold: number;
+  inversao_threshold: number;
 }
