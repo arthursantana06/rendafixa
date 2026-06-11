@@ -407,157 +407,8 @@ export function IndexerPage() {
       {/* LOWER GRID: Inputs & Calculations vs Active Indicators Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 min-h-0">
         
-        {/* Left Column: Expectativa Própria and Metrics (6 cols) */}
-        <div className="lg:col-span-6 flex flex-col gap-6">
-          
-          {/* Card: Expectativa Própria (Standalone layout) */}
-          <div className="border border-border/60 bg-card p-6 shadow-xs animate-in fade-in-50 duration-300">
-            <h3 className="font-serif text-lg text-foreground border-b border-border/30 pb-2 mb-4 flex items-center gap-2">
-              <Sliders className="h-4.5 w-4.5 text-muted-foreground" />
-              Expectativa Própria de Juros
-            </h3>
-            
-            <p className="font-sans text-xs text-muted-foreground mb-4 leading-relaxed">
-              Insira sua própria projeção de taxa de juros para 2029 (Jan/2029). O spread tático será calculado comparando este valor com o contrato futuro de mercado.
-            </p>
-
-            <div className="space-y-4 pt-2">
-              <div className="flex justify-between items-center text-xs font-sans">
-                <span className="font-semibold text-foreground">Sua Taxa Estimada para 2029</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={expectativaPropriaStr}
-                    onChange={(e) => handleExpectationChange(e.target.value)}
-                    onBlur={() => setExpectativaPropriaStr(expectativaPropria.toFixed(2))}
-                    className="w-20 bg-background border border-border font-mono text-xs font-bold text-center py-1 text-foreground focus:outline-none"
-                  />
-                  <span className="mr-1">%</span>
-                  <button
-                    onClick={handleSaveExpectation}
-                    className={`px-2.5 py-1 text-[10px] font-sans font-bold uppercase tracking-wider border transition-all duration-200 cursor-pointer ${
-                      saveExpectationSuccess
-                        ? 'bg-green-600 border-green-600 text-white'
-                        : 'bg-foreground border-foreground text-background hover:bg-foreground/90'
-                    }`}
-                  >
-                    {saveExpectationSuccess ? 'Salvo!' : 'Salvar'}
-                  </button>
-                </div>
-              </div>
-              <input
-                type="range"
-                min="3.00"
-                max="18.00"
-                step="0.05"
-                value={expectativaPropria}
-                onChange={(e) => handleExpectationChange(Number(e.target.value))}
-                className="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer accent-foreground"
-              />
-            </div>
-          </div>
-
-          {/* Card: Novas Métricas Calculadas */}
-          <div className="border border-border/60 bg-card p-6 shadow-xs flex-1">
-            <h3 className="font-serif text-lg text-foreground border-b border-border/30 pb-2 mb-4">
-              Métricas Táticas Calculadas
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Metric 1: Prêmio de Mercado */}
-              <div className="border border-border/40 p-4 bg-muted/5 flex flex-col justify-between">
-                <div>
-                  <span className="font-sans text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">
-                    Prêmio de Mercado
-                  </span>
-                  <div className="font-sans text-2xl font-black text-foreground mb-2">
-                    {mathData.premioDeMercado > 0 ? '+' : ''}{mathData.premioDeMercado.toFixed(2)}%
-                  </div>
-                  <p className="font-sans text-[10px] text-muted-foreground leading-relaxed">
-                    Diferença entre a taxa prefixada negociada ({macroData.valor_taxa_prefixada_2029.toFixed(2)}%) e o contrato de juro futuro ({macroData.juros_futuros_d1f29.toFixed(2)}%).
-                  </p>
-                </div>
-                
-                <div className="mt-4 pt-2 border-t border-border/10">
-                  {mathData.premioDeMercado > 0 ? (
-                    <span className="bg-green-500/10 text-green-700 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 border border-green-500/20">
-                      Prêmio Atraente
-                    </span>
-                  ) : (
-                    <span className="bg-muted text-muted-foreground text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 border border-border">
-                      Sem Prêmio
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Metric 2: Meu Spread */}
-              <div className="border border-border/40 p-4 bg-muted/5 flex flex-col justify-between">
-                <div>
-                  <span className="font-sans text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">
-                    Meu Spread Tático
-                  </span>
-                  <div className="font-sans text-2xl font-black text-foreground mb-2">
-                    {mathData.meuSpread > 0 ? '+' : ''}{mathData.meuSpread.toFixed(2)}%
-                  </div>
-                  <p className="font-sans text-[10px] text-muted-foreground leading-relaxed">
-                    Excesso de taxa que o juro futuro ({macroData.juros_futuros_d1f29.toFixed(2)}%) oferece em relação à sua expectativa própria ({expectativaPropria.toFixed(2)}%).
-                  </p>
-                </div>
-
-                <div className="mt-4 pt-2 border-t border-border/10">
-                  {mathData.meuSpread > 0 ? (
-                    <span className="bg-green-500/10 text-green-700 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 border border-green-500/20">
-                      Expectativa Oportuna
-                    </span>
-                  ) : (
-                    <span className="bg-amber-500/10 text-amber-700 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 border border-amber-500/20 border-dashed">
-                      Expectativa Conservadora
-                    </span>
-                  )}
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-        </div>
-
-        {/* Right Column: Active Indicators and Algebraic Score Equation */}
-        <div className="lg:col-span-6 flex flex-col gap-6">
-          
-          {/* Card: Active Indicators (Optimized layout without SVG chart) */}
-          <div className="border border-border/60 bg-card p-6 flex flex-col gap-4">
-            <h3 className="font-serif text-lg text-foreground border-b border-border/30 pb-2">
-              Indicadores de Mercado Ativos
-            </h3>
-
-            <div className="flex flex-col gap-3 font-sans text-xs">
-              <div className="flex justify-between py-1.5 border-b border-border/20">
-                <span className="text-muted-foreground">Juros Atuais:</span>
-                <span className="font-bold">{macroData.juros_atuais.toFixed(2)}%</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-border/20">
-                <span className="text-muted-foreground">Expec. BACEN (2029):</span>
-                <span className="font-bold">{macroData.expectativa_juros_bacen_2029.toFixed(2)}%</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-border/20">
-                <span className="text-muted-foreground">Juros Futuros (d1f29):</span>
-                <span className="font-bold">{macroData.juros_futuros_d1f29.toFixed(2)}%</span>
-              </div>
-              <div className="flex justify-between py-1.5 border-b border-border/20">
-                <span className="text-muted-foreground">Taxa Prefixada (2029):</span>
-                <span className="font-bold">{macroData.valor_taxa_prefixada_2029.toFixed(2)}%</span>
-              </div>
-              <div className="flex justify-between py-1.5">
-                <span className="text-muted-foreground">Taxa Média Histórica:</span>
-                <span className="font-bold">{macroData.taxa_media_historica.toFixed(2)}%</span>
-              </div>
-            </div>
-          </div>
-
+        {/* Left Column: Formulas & Expectation Inputs (7 cols) */}
+        <div className="lg:col-span-7 flex flex-col gap-6">
           {/* Card: Modelos de Atratividade por Indexador (Custom algebraic equations) */}
           <div className="border border-border/60 bg-card p-6 shadow-xs flex flex-col gap-4">
             <h3 className="font-serif text-lg text-foreground border-b border-border/30 pb-2 flex items-center gap-2">
@@ -750,110 +601,152 @@ export function IndexerPage() {
             </div>
           </div>
 
-          {/* Card: Simulação de Impacto da Nota na Alocação */}
-          <div className="border border-border/60 bg-card p-6 shadow-xs flex flex-col gap-4">
-            <h3 className="font-serif text-lg text-foreground border-b border-border/30 pb-2">
-              Simulação de Impacto da Nota na Alocação
+          {/* Card: Expectativa Própria */}
+          <div className="border border-border/60 bg-card p-6 shadow-xs animate-in fade-in-50 duration-300">
+            <h3 className="font-serif text-lg text-foreground border-b border-border/30 pb-2 mb-4 flex items-center gap-2">
+              <Sliders className="h-4.5 w-4.5 text-muted-foreground" />
+              Expectativa Própria de Juros
             </h3>
-
-            <p className="font-sans text-xs text-muted-foreground leading-relaxed">
-              Veja abaixo a matriz de alocação de carteira que o sistema dita de acordo com diferentes notas calculadas pelo seu modelo (baseado nas restrições de perfil).
+            
+            <p className="font-sans text-xs text-muted-foreground mb-4 leading-relaxed">
+              Insira sua própria projeção de taxa de juros para 2029 (Jan/2029). O spread tático será calculado comparando este valor com o contrato futuro de mercado.
             </p>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left font-sans text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border/30 text-muted-foreground">
-                    <th className="py-2 font-bold uppercase tracking-wider text-[9px]">Nota Pré</th>
-                    <th className="py-2 font-bold uppercase tracking-wider text-[9px] text-right">Pós-fixado (CDI)</th>
-                    <th className="py-2 font-bold uppercase tracking-wider text-[9px] text-right">Inflação (IPCA+)</th>
-                    <th className="py-2 font-bold uppercase tracking-wider text-[9px] text-right">Pré-fixado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/20">
-                  {(() => {
-                    const isFractional = Math.abs(mathData.preRaw) <= 1.0;
-                    const simScores = isFractional 
-                      ? [0.0, 0.2, 0.4, 0.6, 0.8, 1.0] 
-                      : [0.0, 20.0, 40.0, 60.0, 80.0, 100.0];
-
-                    const maxScore = isFractional ? 1.0 : 100.0;
-                    const realPreNote = Math.max(0, Math.min(maxScore, mathData.preRaw));
-                    const closestSimScore = simScores.reduce((prev, curr) => 
-                      Math.abs(curr - realPreNote) < Math.abs(prev - realPreNote) ? curr : prev
-                    , simScores[0]);
-
-                    return simScores.map((simScore) => {
-                      const simAlocPre = isFractional ? simScore : simScore / 100;
-                      const simAlocPrePct = simAlocPre * 100;
-
-                      // 1. Create simulated bindings with PRE set to simulated score
-                      const simBindings = {
-                        ...mathData.bindings,
-                        aloc_pre: simAlocPre,
-                        aloc_ipca: baseWeights.ipca / 100,
-                        aloc_pos: baseWeights.cdi / 100
-                      };
-
-                      // 2. Evaluate IPCA formula under simulated PRE
-                      let ipcaSimRaw = baseWeights.ipca / 100;
-                      try {
-                        if (formulaIPCA && formulaIPCA.trim() !== '') {
-                          ipcaSimRaw = evaluateFormula(formulaIPCA, simBindings);
-                        }
-                      } catch (e) {
-                        ipcaSimRaw = baseWeights.ipca / 100;
-                      }
-                      const ipcaSimFrac = toFraction(ipcaSimRaw);
-
-                      // Update simulated bindings with evaluated IPCA
-                      simBindings.aloc_ipca = ipcaSimFrac;
-
-                      // 3. Evaluate CDI formula under simulated PRE and IPCA
-                      let cdiSimRaw = baseWeights.cdi / 100;
-                      try {
-                        if (formulaCDI && formulaCDI.trim() !== '') {
-                          cdiSimRaw = evaluateFormula(formulaCDI, simBindings);
-                        }
-                      } catch (e) {
-                        cdiSimRaw = baseWeights.cdi / 100;
-                      }
-                      const cdiSimFrac = toFraction(cdiSimRaw);
-
-                      // 4. Compute final weights directly
-                      const simWeights = {
-                        pre: Math.round(simAlocPrePct * 10) / 10,
-                        ipca: Math.round(ipcaSimFrac * 100 * 10) / 10,
-                        cdi: Math.round(cdiSimFrac * 100 * 10) / 10
-                      };
-
-                      const isCurrent = simScore === closestSimScore;
-
-                      return (
-                        <tr key={simScore} className={`hover:bg-muted/5 transition-colors ${isCurrent ? 'bg-muted/15 font-bold' : ''}`}>
-                          <td className="py-2.5 font-mono">
-                            {simScore.toFixed(isFractional ? 2 : 1)} {isCurrent ? ' (Atual)' : ''}
-                          </td>
-                          <td className="py-2.5 text-right font-mono">{simWeights.cdi.toFixed(1)}%</td>
-                          <td className="py-2.5 text-right font-mono">{simWeights.ipca.toFixed(1)}%</td>
-                          <td className="py-2.5 text-right font-mono">{simWeights.pre.toFixed(1)}%</td>
-                        </tr>
-                      );
-                    });
-                  })()}
-                </tbody>
-              </table>
+            <div className="space-y-4 pt-2">
+              <div className="flex justify-between items-center text-xs font-sans">
+                <span className="font-semibold text-foreground">Sua Taxa Estimada para 2029</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={expectativaPropriaStr}
+                    onChange={(e) => handleExpectationChange(e.target.value)}
+                    onBlur={() => setExpectativaPropriaStr(expectativaPropria.toFixed(2))}
+                    className="w-20 bg-background border border-border font-mono text-xs font-bold text-center py-1 text-foreground focus:outline-none"
+                  />
+                  <span className="mr-1">%</span>
+                  <button
+                    onClick={handleSaveExpectation}
+                    className={`px-2.5 py-1 text-[10px] font-sans font-bold uppercase tracking-wider border transition-all duration-200 cursor-pointer ${
+                      saveExpectationSuccess
+                        ? 'bg-green-600 border-green-600 text-white'
+                        : 'bg-foreground border-foreground text-background hover:bg-foreground/90'
+                    }`}
+                  >
+                    {saveExpectationSuccess ? 'Salvo!' : 'Salvar'}
+                  </button>
+                </div>
+              </div>
+              <input
+                type="range"
+                min="3.00"
+                max="18.00"
+                step="0.05"
+                value={expectativaPropria}
+                onChange={(e) => handleExpectationChange(Number(e.target.value))}
+                className="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer accent-foreground"
+              />
             </div>
+          </div>
+        </div>
 
-            <div className="text-[10px] font-sans text-muted-foreground bg-muted/5 border border-border/15 p-2.5 leading-relaxed">
-              <strong>Mapeamento:</strong> A nota resultante define diretamente o percentual de alocação de cada indexador, utilizando a escala decimal na fórmula (ex: uma nota de 0.89 corresponde a 89% de alocação no indexador correspondente).
+        {/* Right Column: Active Indicators & Tactical Metrics (5 cols) */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          {/* Card: Indicadores de Mercado Ativos */}
+          <div className="border border-border/60 bg-card p-6 flex flex-col gap-4">
+            <h3 className="font-serif text-lg text-foreground border-b border-border/30 pb-2">
+              Indicadores de Mercado Ativos
+            </h3>
+
+            <div className="flex flex-col gap-3 font-sans text-xs">
+              <div className="flex justify-between py-1.5 border-b border-border/20">
+                <span className="text-muted-foreground">Juros Atuais:</span>
+                <span className="font-bold">{macroData.juros_atuais.toFixed(2)}%</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-border/20">
+                <span className="text-muted-foreground">Expec. BACEN (2029):</span>
+                <span className="font-bold">{macroData.expectativa_juros_bacen_2029.toFixed(2)}%</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-border/20">
+                <span className="text-muted-foreground">Juros Futuros (d1f29):</span>
+                <span className="font-bold">{macroData.juros_futuros_d1f29.toFixed(2)}%</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-border/20">
+                <span className="text-muted-foreground">Taxa Prefixada (2029):</span>
+                <span className="font-bold">{macroData.valor_taxa_prefixada_2029.toFixed(2)}%</span>
+              </div>
+              <div className="flex justify-between py-1.5">
+                <span className="text-muted-foreground">Taxa Média Histórica:</span>
+                <span className="font-bold">{macroData.taxa_media_historica.toFixed(2)}%</span>
+              </div>
             </div>
           </div>
 
+          {/* Card: Métricas Táticas Calculadas */}
+          <div className="border border-border/60 bg-card p-6 shadow-xs flex-1">
+            <h3 className="font-serif text-lg text-foreground border-b border-border/30 pb-2 mb-4">
+              Métricas Táticas Calculadas
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Metric 1: Prêmio de Mercado */}
+              <div className="border border-border/40 p-4 bg-muted/5 flex flex-col justify-between">
+                <div>
+                  <span className="font-sans text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">
+                    Prêmio de Mercado
+                  </span>
+                  <div className="font-sans text-2xl font-black text-foreground mb-2">
+                    {mathData.premioDeMercado > 0 ? '+' : ''}{mathData.premioDeMercado.toFixed(2)}%
+                  </div>
+                  <p className="font-sans text-[10px] text-muted-foreground leading-relaxed">
+                    Diferença entre a taxa prefixada negociada ({macroData.valor_taxa_prefixada_2029.toFixed(2)}%) e o contrato de juro futuro ({macroData.juros_futuros_d1f29.toFixed(2)}%).
+                  </p>
+                </div>
+                
+                <div className="mt-4 pt-2 border-t border-border/10">
+                  {mathData.premioDeMercado > 0 ? (
+                    <span className="bg-green-500/10 text-green-700 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 border border-green-500/20">
+                      Prêmio Atraente
+                    </span>
+                  ) : (
+                    <span className="bg-muted text-muted-foreground text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 border border-border">
+                      Sem Prêmio
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Metric 2: Meu Spread */}
+              <div className="border border-border/40 p-4 bg-muted/5 flex flex-col justify-between">
+                <div>
+                  <span className="font-sans text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-1">
+                    Meu Spread Tático
+                  </span>
+                  <div className="font-sans text-2xl font-black text-foreground mb-2">
+                    {mathData.meuSpread > 0 ? '+' : ''}{mathData.meuSpread.toFixed(2)}%
+                  </div>
+                  <p className="font-sans text-[10px] text-muted-foreground leading-relaxed">
+                    Excesso de taxa que o juro futuro ({macroData.juros_futuros_d1f29.toFixed(2)}%) oferece em relação à sua expectativa própria ({expectativaPropria.toFixed(2)}%).
+                  </p>
+                </div>
+
+                <div className="mt-4 pt-2 border-t border-border/10">
+                  {mathData.meuSpread > 0 ? (
+                    <span className="bg-green-500/10 text-green-700 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 border border-green-500/20">
+                      Expectativa Oportuna
+                    </span>
+                  ) : (
+                    <span className="bg-amber-500/10 text-amber-700 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 border border-amber-500/20 border-dashed">
+                      Expectativa Conservadora
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
-
-  </div>
   );
 }
