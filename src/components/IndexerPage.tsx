@@ -60,19 +60,36 @@ export function IndexerPage() {
   const [macroData, setMacroData] = useState<MacroScenario | null>(null);
 
   // Profile and Horizon states (defaults, read from localStorage fallback)
-  const [profile, setProfile] = useState<'conservador' | 'moderado' | 'arrojado'>('moderado');
+  const [profile, setProfile] = useState<'conservador' | 'moderado' | 'arrojado'>(() => {
+    const saved = localStorage.getItem('hfc_profile');
+    return (saved as any) || 'moderado';
+  });
   const limits = PROFILE_LIMITS[profile];
-  const [horizon, setHorizon] = useState<'curto' | 'medio' | 'longo'>('medio');
+  const [horizon, setHorizon] = useState<'curto' | 'medio' | 'longo'>(() => {
+    const saved = localStorage.getItem('hfc_horizon');
+    return (saved as any) || 'medio';
+  });
 
   // Expectativa Própria
-  const [expectativaPropria, setExpectativaPropria] = useState(10.00);
-  const [expectativaPropriaStr, setExpectativaPropriaStr] = useState("10.00");
+  const [expectativaPropria, setExpectativaPropria] = useState(() => {
+    const saved = localStorage.getItem('hfc_expectativa_propria');
+    return saved ? Number(saved) : 10.00;
+  });
+  const [expectativaPropriaStr, setExpectativaPropriaStr] = useState(() => {
+    return localStorage.getItem('hfc_expectativa_propria') || "10.00";
+  });
   const [saveExpectationSuccess, setSaveExpectationSuccess] = useState(false);
 
   // Customizable formulas for each indexer box
-  const [formulaCDI, setFormulaCDI] = useState("60");
-  const [formulaIPCA, setFormulaIPCA] = useState("30");
-  const [formulaPRE, setFormulaPRE] = useState("J_atual - T_hist");
+  const [formulaCDI, setFormulaCDI] = useState(() => {
+    return localStorage.getItem('hfc_formula_cdi') ?? "60";
+  });
+  const [formulaIPCA, setFormulaIPCA] = useState(() => {
+    return localStorage.getItem('hfc_formula_ipca') ?? "30";
+  });
+  const [formulaPRE, setFormulaPRE] = useState(() => {
+    return localStorage.getItem('hfc_formula_pre') ?? "J_atual - T_hist";
+  });
 
   // Fetch active macroeconomic data from Supabase
   const fetchActiveMacroData = useCallback(async () => {
@@ -115,31 +132,6 @@ export function IndexerPage() {
 
   useEffect(() => {
     fetchActiveMacroData();
-
-    // Load configurations from localStorage if they exist
-    const savedProfile = localStorage.getItem('hfc_profile') as any;
-    if (savedProfile) setProfile(savedProfile);
-
-    const savedHorizon = localStorage.getItem('hfc_horizon') as any;
-    if (savedHorizon) setHorizon(savedHorizon);
-
-    const savedExpectation = localStorage.getItem('hfc_expectativa_propria');
-    if (savedExpectation) {
-      const num = Number(savedExpectation);
-      setExpectativaPropria(num);
-      setExpectativaPropriaStr(savedExpectation);
-    } else {
-      setExpectativaPropriaStr("10.00");
-    }
-
-    const savedFormulaCDI = localStorage.getItem('hfc_formula_cdi');
-    if (savedFormulaCDI !== null) setFormulaCDI(savedFormulaCDI);
-
-    const savedFormulaIPCA = localStorage.getItem('hfc_formula_ipca');
-    if (savedFormulaIPCA !== null) setFormulaIPCA(savedFormulaIPCA);
-
-    const savedFormulaPRE = localStorage.getItem('hfc_formula_pre');
-    if (savedFormulaPRE !== null) setFormulaPRE(savedFormulaPRE);
   }, [fetchActiveMacroData]);
 
   // Update draft states for Expectativa Própria
@@ -780,15 +772,19 @@ export function IndexerPage() {
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {(() => {
-                    const simScores = [0.0, 2.5, 5.0, 7.5, 10.0];
+                    const isFractional = Math.abs(mathData.preRaw) <= 1.0;
+                    const simScores = isFractional 
+                      ? [0.0, 0.2, 0.4, 0.6, 0.8, 1.0] 
+                      : [0.0, 20.0, 40.0, 60.0, 80.0, 100.0];
 
-                    const realPreNote = Math.max(0, Math.min(10, mathData.preRaw));
+                    const maxScore = isFractional ? 1.0 : 100.0;
+                    const realPreNote = Math.max(0, Math.min(maxScore, mathData.preRaw));
                     const closestSimScore = simScores.reduce((prev, curr) => 
                       Math.abs(curr - realPreNote) < Math.abs(prev - realPreNote) ? curr : prev
                     , simScores[0]);
 
                     return simScores.map((simScore) => {
-                      const simAlocPre = (simScore / 10.0) * (limits.pre.max / 100);
+                      const simAlocPre = isFractional ? simScore : simScore / 100;
                       const simAlocPrePct = simAlocPre * 100;
 
                       // 1. Create simulated bindings with PRE set to simulated score
@@ -836,7 +832,7 @@ export function IndexerPage() {
                       return (
                         <tr key={simScore} className={`hover:bg-muted/5 transition-colors ${isCurrent ? 'bg-muted/15 font-bold' : ''}`}>
                           <td className="py-2.5 font-mono">
-                            {simScore.toFixed(1)} {isCurrent ? ' (Atual)' : ''}
+                            {simScore.toFixed(isFractional ? 2 : 1)} {isCurrent ? ' (Atual)' : ''}
                           </td>
                           <td className="py-2.5 text-right font-mono">{simWeights.cdi.toFixed(1)}%</td>
                           <td className="py-2.5 text-right font-mono">{simWeights.ipca.toFixed(1)}%</td>
