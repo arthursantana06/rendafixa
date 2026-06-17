@@ -17,9 +17,6 @@ interface BankDetailsModalProps {
 export function BankDetailsModal({ analysis, onClose, onSaveSuccess }: BankDetailsModalProps) {
   const { bank } = analysis;
   const [ratingState, setRatingState] = useState(bank.rating || 'SR');
-  const [ialState, setIalState] = useState(
-    bank.proxy_liquidez_ial !== null && bank.proxy_liquidez_ial !== undefined ? bank.proxy_liquidez_ial.toString() : ''
-  );
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [animateIn, setAnimateIn] = useState(false);
@@ -35,14 +32,12 @@ export function BankDetailsModal({ analysis, onClose, onSaveSuccess }: BankDetai
     setSaveStatus('idle');
 
     try {
-      const parsedIal = ialState.trim() === '' ? null : parseFloat(ialState);
       const rating = ratingState.trim() === '' ? 'SR' : ratingState.trim();
 
       const { error } = await supabase
         .from('emissores_bancarios')
         .update({
           rating,
-          proxy_liquidez_ial: parsedIal,
           updated_at: new Date().toISOString()
         })
         .eq('codigo', bank.id);
@@ -188,7 +183,7 @@ export function BankDetailsModal({ analysis, onClose, onSaveSuccess }: BankDetai
               Atributos de Ajuste Manual
             </h4>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               {/* Rating Externo Field */}
               <div className="flex flex-col gap-2">
                 <label 
@@ -224,36 +219,10 @@ export function BankDetailsModal({ analysis, onClose, onSaveSuccess }: BankDetai
                   <option value="D">D (Default)</option>
                 </select>
               </div>
-
-              {/* Proxy Liquidez IAL (%) Field */}
-              <div className="flex flex-col gap-2">
-                <label 
-                  htmlFor="modal-ial" 
-                  className="font-sans text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-                >
-                  Proxy Liquidez IAL (%)
-                </label>
-                <input
-                  id="modal-ial"
-                  type="text"
-                  placeholder="Ex: 25.0"
-                  value={ialState}
-                  onChange={(e) => {
-                    let val = e.target.value.replace(',', '.');
-                    val = val.replace(/[^0-9.]/g, '');
-                    const parts = val.split('.');
-                    if (parts.length > 2) {
-                      val = parts[0] + '.' + parts.slice(1).join('');
-                    }
-                    setIalState(val);
-                  }}
-                  className="w-full bg-background border border-border/60 text-foreground font-sans text-xs px-3 py-2 outline-none rounded-none focus:border-foreground transition-all h-10 text-left focus-visible:ring-1 focus-visible:ring-foreground"
-                />
-              </div>
             </div>
 
             <p className="font-sans text-[9px] text-muted-foreground leading-relaxed">
-              * O Proxy Liquidez IAL e o Rating Externo exigem atualização periódica manual por não estarem disponíveis de forma padronizada nas planilhas brutas do IF.data. Ao salvar, as novas métricas serão integradas permanentemente na base do Supabase e recalcularão as pontuações e status eliminatórios de forma reativa e instantânea.
+              * O Rating Externo exige atualização periódica manual por não estar disponível de forma padronizada nas planilhas brutas do IF.data. Ao salvar, as novas métricas serão integradas permanentemente na base do Supabase e recalcularão as pontuações de forma reativa e instantânea.
             </p>
           </div>
 

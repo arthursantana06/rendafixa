@@ -46,8 +46,29 @@ const DEFAULT_FORMULAS: Record<string, string> = {
 };
 
 function App() {
-  const [activeMainTab, setActiveMainTab] = useState<MainTab>('emissor');
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('analise');
+  const [activeMainTab, setActiveMainTab] = useState<MainTab>(() => {
+    const saved = localStorage.getItem('activeMainTab');
+    return (saved as MainTab) || 'emissor';
+  });
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>(() => {
+    const saved = localStorage.getItem('activeSubTab');
+    return (saved as SubTab) || 'analise';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('activeMainTab', activeMainTab);
+  }, [activeMainTab]);
+
+  useEffect(() => {
+    localStorage.setItem('activeSubTab', activeSubTab);
+  }, [activeSubTab]);
+
+  const handleMainTabChange = useCallback((tab: MainTab) => {
+    setActiveMainTab(tab);
+    if (tab === 'indexador' && activeSubTab === 'metodologia') {
+      setActiveSubTab('analise');
+    }
+  }, [activeSubTab]);
 
   const [banks, setBanks] = useState<BankData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -331,7 +352,7 @@ function App() {
         <Header
           activeMainTab={activeMainTab}
           activeSubTab={activeSubTab}
-          onMainTabChange={setActiveMainTab}
+          onMainTabChange={handleMainTabChange}
           onSubTabChange={setActiveSubTab}
         />
 
