@@ -461,7 +461,7 @@ export function IndexerDataPage() {
     return () => clearTimeout(timer);
   }, [jurosAtuais, expectativaJurosBacen2029, jurosFuturosD1f29, valorTaxaPrefixada2029, taxaMediaHistorica, isLoading]);
 
-  // Fetch news using CORS-proxies to bypass CORS on news.google.com (uses corsproxy.io with fallbacks)
+  // Fetch news using rss2json API to parse Google News RSS directly as JSON
   const fetchNews = async (tagsList: string[]) => {
     if (tagsList.length === 0) {
       setNewsItems([]);
@@ -474,79 +474,51 @@ export function IndexerDataPage() {
       for (const tag of tagsList) {
         const encodedQuery = encodeURIComponent(tag);
         const rssUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
         
-        let xmlText = "";
-        
-        // Proxy 1: corsproxy.io (highly reliable for client-side/browser requests)
         try {
-          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(rssUrl)}`;
-          const res = await fetch(proxyUrl);
+          const res = await fetch(apiUrl);
           if (res.ok) {
-            xmlText = await res.text();
-          }
-        } catch (e) {
-          console.warn(`Proxy 1 (corsproxy.io) falhou para "${tag}", tentando Proxy 2...`);
-        }
-        
-        // Proxy 2: codetabs (fallback, direct raw text)
-        if (!xmlText) {
-          try {
-            const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rssUrl)}`;
-            const res = await fetch(proxyUrl);
-            if (res.ok) {
-              xmlText = await res.text();
+            const data = await res.json();
+            if (data.status === 'ok' && data.items) {
+              const items = data.items;
+              for (let i = 0; i < Math.min(items.length, 5); i++) {
+                const item = items[i];
+                const rawTitle = item.title || "";
+                const link = item.link || "";
+                const pubDate = item.pubDate || "";
+                let source = "Google News";
+                
+                let title = rawTitle;
+                const lastDashIndex = rawTitle.lastIndexOf(" - ");
+                if (lastDashIndex !== -1) {
+                  title = rawTitle.substring(0, lastDashIndex);
+                  source = rawTitle.substring(lastDashIndex + 3);
+                }
+                
+                fetched.push({
+                  termo_pesquisado: tag,
+                  titulo: title.trim(),
+                  fonte: source.trim(),
+                  data_publicacao: pubDate,
+                  link_url: link
+                });
+              }
+            } else {
+              throw new Error("RSS2JSON returned non-ok status: " + data.status);
             }
-          } catch (e) {
-            console.warn(`Proxy 2 (codetabs) falhou para "${tag}", tentando Proxy 3...`);
+          } else {
+            throw new Error(`Failed to fetch from RSS2JSON: ${res.status}`);
           }
-        }
-        
-        // Proxy 3: allorigins (fallback, JSON wrapped contents)
-        if (!xmlText) {
-          try {
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`;
-            const res = await fetch(proxyUrl);
-            if (res.ok) {
-              const json = await res.json();
-              xmlText = json.contents || "";
-            }
-          } catch (e) {
-            console.warn(`Proxy 3 (allorigins) falhou para "${tag}"`);
-          }
-        }
-        
-        if (xmlText) {
-          const parser = new DOMParser();
-          const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-          const items = xmlDoc.getElementsByTagName("item");
-          
-          for (let i = 0; i < Math.min(items.length, 5); i++) {
-            const item = items[i];
-            const rawTitle = item.getElementsByTagName("title")[0]?.textContent || "";
-            const link = item.getElementsByTagName("link")[0]?.textContent || "";
-            const pubDate = item.getElementsByTagName("pubDate")[0]?.textContent || "";
-            const sourceNode = item.getElementsByTagName("source")[0];
-            let source = sourceNode?.textContent || "Google News";
-            
-            let title = rawTitle;
-            const lastDashIndex = rawTitle.lastIndexOf(" - ");
-            if (lastDashIndex !== -1) {
-              title = rawTitle.substring(0, lastDashIndex);
-              source = rawTitle.substring(lastDashIndex + 3);
-            }
-            
-            fetched.push({
-              termo_pesquisado: tag,
-              titulo: title.trim(),
-              fonte: source.trim(),
-              data_publicacao: pubDate,
-              link_url: link
-            });
-          }
-        } else {
-          throw new Error("Falha ao carregar feed RSS nos proxies.");
+        } catch (innerError) {
+          console.warn(`Erro ao buscar notícias para a tag "${tag}" via RSS2JSON:`, innerError);
         }
       }
+      
+      if (fetched.length === 0 && tagsList.length > 0) {
+        throw new Error("Nenhuma notícia pôde ser recuperada.");
+      }
+      
       setNewsItems(fetched);
     } catch (e) {
       console.error('Error fetching Google News:', e);
@@ -800,7 +772,7 @@ export function IndexerDataPage() {
       <div className="flex flex-col md:flex-row md:items-start justify-between mb-2 shrink-0 gap-6">
         <div className="max-w-4xl">
           <h2 className="font-serif text-3xl font-bold tracking-tight text-foreground leading-tight mb-2">
-            Gestão de Parâmetros e Dados Macroeconômicos
+            Dados Macroeconômicos
           </h2>
           <p className="font-serif text-xs italic text-muted-foreground leading-relaxed">
             Consolidação dos dados base do cenário econômico. Estas variáveis atuam como inputs de marcação na otimização de indexadores e no cálculo de spreads táticos do mercado de renda fixa.
@@ -828,9 +800,6 @@ export function IndexerDataPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
               Gráfico de Selic Real Histórica
             </h3>
-            <p className="font-serif text-xs italic text-muted-foreground mt-1">
-              Histórico diário da taxa de juros real efetiva descontada a inflação implícita no Brasil.
-            </p>
           </div>
           
           {/* Period Selector Buttons */}
