@@ -3,7 +3,7 @@
 // ============================================================
 
 import { useState, useEffect } from 'react';
-import { X, Save, Check, AlertTriangle, Building2 } from 'lucide-react';
+import { X, Save, Check, AlertTriangle, Building2, Newspaper } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { BankAnalysis } from '@/types';
 import { getDimensions } from '@/lib/indicators';
@@ -20,6 +20,86 @@ export function BankDetailsModal({ analysis, onClose, onSaveSuccess }: BankDetai
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [animateIn, setAnimateIn] = useState(false);
+  const [newsItems, setNewsItems] = useState<{
+    titulo: string;
+    fonte: string;
+    data_publicacao: string;
+    link_url: string;
+  }[]>([]);
+  const [isNewsLoading, setIsNewsLoading] = useState(false);
+  const [newsError, setNewsError] = useState<string | null>(null);
+
+  // Fetch news using rss2json API for the bank
+  useEffect(() => {
+    async function fetchBankNews() {
+      if (!bank.name) return;
+      setIsNewsLoading(true);
+      setNewsError(null);
+      try {
+        let cleanName = bank.name.trim();
+        cleanName = cleanName.replace(/\s+S\.?A\.?$/i, '');
+        cleanName = cleanName.replace(/\s+S\/A$/i, '');
+        
+        const encodedQuery = encodeURIComponent(cleanName);
+        const rssUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+        
+        const res = await fetch(apiUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'ok' && data.items) {
+            const fetched = data.items.slice(0, 5).map((item: any) => {
+              const rawTitle = item.title || "";
+              const link = item.link || "";
+              const pubDate = item.pubDate || "";
+              let source = "Google News";
+              
+              let title = rawTitle;
+              const lastDashIndex = rawTitle.lastIndexOf(" - ");
+              if (lastDashIndex !== -1) {
+                title = rawTitle.substring(0, lastDashIndex);
+                source = rawTitle.substring(lastDashIndex + 3);
+              }
+              
+              return {
+                titulo: title.trim(),
+                fonte: source.trim(),
+                data_publicacao: pubDate,
+                link_url: link
+              };
+            });
+            setNewsItems(fetched);
+          } else {
+            throw new Error("RSS2JSON returned non-ok status");
+          }
+        } else {
+          throw new Error("Failed to fetch news");
+        }
+      } catch (e) {
+        console.error('Error fetching bank news:', e);
+        setNewsError('Não foi possível carregar notícias recentes.');
+      } finally {
+        setIsNewsLoading(false);
+      }
+    }
+    
+    fetchBankNews();
+  }, [bank.name]);
+
+  const formatNewsDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  };
 
   // Trigger animations on mount
   useEffect(() => {
@@ -224,6 +304,55 @@ export function BankDetailsModal({ analysis, onClose, onSaveSuccess }: BankDetai
             <p className="font-sans text-[9px] text-muted-foreground leading-relaxed">
               * O Rating Externo exige atualização periódica manual por não estar disponível de forma padronizada nas planilhas brutas do IF.data. Ao salvar, as novas métricas serão integradas permanentemente na base do Supabase e recalcularão as pontuações de forma reativa e instantânea.
             </p>
+          </div>
+
+          {/* News Section */}
+          <div className="flex flex-col gap-4 border-t border-border/40 pt-6 mt-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Newspaper className="h-4 w-4 text-muted-foreground" />
+              <h4 className="font-sans text-[11px] font-black uppercase tracking-widest text-foreground">
+                Radar de Notícias do Emissor
+              </h4>
+            </div>
+
+            {isNewsLoading ? (
+              <div className="space-y-3 animate-pulse">
+                {[1, 2].map((n) => (
+                  <div key={n} className="p-3 border border-border/30 bg-muted/5 space-y-2">
+                    <div className="h-3.5 bg-muted/30 w-5/6 rounded"></div>
+                    <div className="h-2.5 bg-muted/30 w-1/3 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : newsError ? (
+              <p className="text-[11px] italic text-muted-foreground bg-destructive/5 p-3 border border-destructive/10">
+                {newsError}
+              </p>
+            ) : newsItems.length === 0 ? (
+              <p className="text-[11px] italic text-muted-foreground pl-1">
+                Nenhuma notícia recente encontrada para este emissor.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {newsItems.map((item, idx) => (
+                  <a
+                    key={idx}
+                    href={item.link_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col justify-between p-3.5 border border-border/30 hover:border-foreground/40 bg-muted/5 hover:bg-muted/10 transition-all duration-300 select-none"
+                  >
+                    <h5 className="font-sans text-[11px] font-semibold leading-snug text-foreground hover:text-primary transition-colors line-clamp-2">
+                      {item.titulo}
+                    </h5>
+                    <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-border/20 text-[8px] font-mono text-muted-foreground">
+                      <span className="truncate max-w-[150px]">{item.fonte}</span>
+                      <span>{formatNewsDate(item.data_publicacao)}</span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>
