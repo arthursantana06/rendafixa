@@ -3,14 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { 
   Database, 
   Upload, 
-  Save, 
-  Check,
   TrendingUp,
   TrendingDown,
-  ArrowUpRight,
-  HelpCircle,
-  Info,
-  Calendar,
   FileSpreadsheet,
   CheckCircle2,
   AlertCircle,
@@ -26,35 +20,6 @@ interface SelicPoint {
   rate: number;
 }
 
-interface ParseResultRow {
-  Código?: string;
-  Instituição?: string;
-  'Ativo Total'?: string;
-  'Patrimônio Líquido'?: string;
-  'Lucro Líquido'?: string;
-  'Carteira de Crédito Total'?: string;
-  Segmento_Prudencial?: string;
-  'Indice_Basileia (%)'?: string;
-  'Capital_Principal_CET1 (%)'?: string;
-  'Razao_Alavancagem (%)'?: string;
-  'Deposito_Vista_vs_Funding (%)'?: string;
-  PCLD_Saldo?: string;
-  Total_Depositos?: string;
-  Captacoes_Totais?: string;
-  Atraso_Total?: string;
-  'LDR (%)'?: string;
-  'Indice_Inadimplencia_II (%)'?: string;
-  'ICP_Cobertura (%)'?: string;
-  'ROE_Calculado (%)'?: string;
-  'ROA_Calculado (%)'?: string;
-  'Indice_Eficiencia (%)'?: string;
-  'Proxy_Liquidez_IAL (%)'?: string;
-  'Tendencia_Crescimento_Carteira (%)'?: string;
-  'Tendencia_CET1 (pp)'?: string;
-  'Tendencia_ROA (pp)'?: string;
-  'Tendencia_LDR (pp)'?: string;
-  'Tendencia_Proxy_Liquidez (pp)'?: string;
-}
 
 function parseNumber(value: any): number {
   if (value === undefined || value === null || value === '') return 0;
@@ -71,31 +36,6 @@ function parseNumber(value: any): number {
   return isNaN(num) ? 0 : num;
 }
 
-function fixDoubleUtf8(str: string): string {
-  if (!str) return '';
-  try {
-    const cp1252Map: Record<number, number> = {
-      0x20ac: 0x80, 0x201a: 0x82, 0x0192: 0x83, 0x201e: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87,
-      0x02c6: 0x88, 0x2030: 0x89, 0x0160: 0x8a, 0x2039: 0x8b, 0x0152: 0x8c, 0x017d: 0x8e, 0x2018: 0x91,
-      0x2019: 0x92, 0x201c: 0x93, 0x201d: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97, 0x02dc: 0x98,
-      0x2122: 0x99, 0x0161: 0x9a, 0x203a: 0x9b, 0x0153: 0x9c, 0x017e: 0x9e, 0x0178: 0xff
-    };
-    const bytes: number[] = [];
-    for (let i = 0; i < str.length; i++) {
-      const code = str.charCodeAt(i);
-      if (code < 256) {
-        bytes.push(code);
-      } else if (code in cp1252Map) {
-        bytes.push(cp1252Map[code]);
-      } else {
-        return str;
-      }
-    }
-    return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
-  } catch (e) {
-    return str;
-  }
-}
 
 function downsample(data: SelicPoint[], maxPoints: number): SelicPoint[] {
   if (data.length <= maxPoints) return data;
@@ -112,8 +52,7 @@ function downsample(data: SelicPoint[], maxPoints: number): SelicPoint[] {
 
 export function IndexerDataPage() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+
 
   // Macro Indicators (5 Variables)
   const [jurosAtuais, setJurosAtuais] = useState(10.50);
@@ -829,35 +768,6 @@ export function IndexerDataPage() {
     }
   };
 
-  // Save values to DB
-  const handleSave = async () => {
-    setIsSaving(true);
-    setSaveSuccess(false);
-    try {
-      const { error } = await supabase
-        .from('cenarios_macro')
-        .update({
-          juros_atuais: jurosAtuais,
-          expectativa_juros_bacen_2029: expectativaJurosBacen2029,
-          juros_futuros_d1f29: jurosFuturosD1f29,
-          valor_taxa_prefixada_2029: valorTaxaPrefixada2029,
-          taxa_media_historica: taxaMediaHistorica
-        })
-        .eq('key', 'ativo');
-
-      if (error) throw error;
-
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (e) {
-      console.error('Failed to save variables:', e);
-      alert('Erro ao salvar no banco de dados. Tentando simular localmente.');
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -952,9 +862,9 @@ export function IndexerDataPage() {
             <div className="flex items-center gap-1.5">
               <span className="font-mono text-base font-bold text-foreground">{stats.latest.toFixed(4)}%</span>
               {stats.latest >= stats.avg ? (
-                <TrendingUp className="h-3.5 w-3.5 text-emerald-500" title="Acima da média" />
+                <span title="Acima da média"><TrendingUp className="h-3.5 w-3.5 text-emerald-500" /></span>
               ) : (
-                <TrendingDown className="h-3.5 w-3.5 text-rose-500" title="Abaixo da média" />
+                <span title="Abaixo da média"><TrendingDown className="h-3.5 w-3.5 text-rose-500" /></span>
               )}
             </div>
             <span className="font-mono text-[8px] text-muted-foreground/80 block">Ref: {formatDateBR(stats.latestDate)}</span>

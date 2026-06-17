@@ -60,12 +60,11 @@ export function IndexerPage() {
   const [macroData, setMacroData] = useState<MacroScenario | null>(null);
 
   // Profile and Horizon states (defaults, read from localStorage fallback)
-  const [profile, setProfile] = useState<'conservador' | 'moderado' | 'arrojado'>(() => {
+  const [profile] = useState<'conservador' | 'moderado' | 'arrojado'>(() => {
     const saved = localStorage.getItem('hfc_profile');
     return (saved as any) || 'moderado';
   });
-  const limits = PROFILE_LIMITS[profile];
-  const [horizon, setHorizon] = useState<'curto' | 'medio' | 'longo'>(() => {
+  const [horizon] = useState<'curto' | 'medio' | 'longo'>(() => {
     const saved = localStorage.getItem('hfc_horizon');
     return (saved as any) || 'medio';
   });
