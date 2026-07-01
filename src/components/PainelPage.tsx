@@ -100,7 +100,10 @@ const NEWS_MOCK: Record<string, NewsItem[]> = {
 };
 
 export function PainelPage({ analyses, isLoading }: PainelPageProps) {
-  const [words, setWords] = useState<string[]>(["Selic", "IPCA", "Crédito Bancário", "Copom", "Bancos Médios"]);
+  const [words, setWords] = useState<string[]>(() => {
+    const saved = localStorage.getItem('hfc_news_words');
+    return saved ? JSON.parse(saved) : ["Selic", "IPCA", "Crédito Bancário", "Copom", "Bancos Médios"];
+  });
   const [selectedWord, setSelectedWord] = useState<string>("Selic");
   const [news, setNews] = useState<Record<string, NewsItem[]>>(NEWS_MOCK);
   
@@ -118,14 +121,13 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
     const saved = localStorage.getItem('hfc_expectativa_propria');
     if (saved) setExpectativaPropria(Number(saved));
 
-    // 2. Fetch Selic history
+    // 2. Fetch Selic history (Full timeline)
     async function fetchSelic() {
       try {
         const { data, error } = await supabase
           .from('historico_selic_real')
           .select('date, rate')
-          .order('date', { ascending: false })
-          .limit(300);
+          .order('date', { ascending: false });
         
         if (!error && data) {
           const formatted = data.map((row: any) => ({
@@ -139,6 +141,25 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
       }
     }
     fetchSelic();
+
+    // 3. Fetch keywords
+    async function fetchKeywords() {
+      try {
+        const { data, error } = await supabase
+          .from('hfc_news_keywords')
+          .select('word')
+          .order('created_at', { ascending: true });
+        
+        if (!error && data && data.length > 0) {
+          const list = data.map((row: any) => row.word);
+          setWords(list);
+          localStorage.setItem('hfc_news_words', JSON.stringify(list));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    fetchKeywords();
   }, []);
 
   // Get Top 5 eligible banks based on actual calculations
@@ -208,7 +229,7 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
   }, [chartPoints]);
 
   // News manager functions
-  const handleAddWord = () => {
+  const handleAddWord = async () => {
     const trimmed = newWordInput.trim();
     if (!trimmed) return;
     
@@ -220,7 +241,10 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
       return;
     }
 
-    setWords([...words, capitalized]);
+    const updated = [...words, capitalized];
+    setWords(updated);
+    localStorage.setItem('hfc_news_words', JSON.stringify(updated));
+    
     setNews(prev => ({
       ...prev,
       [capitalized]: [
@@ -235,11 +259,20 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
     }));
     setNewWordInput("");
     setSelectedWord(capitalized);
+
+    try {
+      await supabase
+        .from('hfc_news_keywords')
+        .insert({ word: capitalized });
+    } catch (e) {
+      console.error('Failed to insert keyword in DB:', e);
+    }
   };
 
-  const handleRemoveWord = (word: string) => {
+  const handleRemoveWord = async (word: string) => {
     const remaining = words.filter(w => w !== word);
     setWords(remaining);
+    localStorage.setItem('hfc_news_words', JSON.stringify(remaining));
     
     setNews(prev => {
       const copy = { ...prev };
@@ -250,6 +283,15 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
     if (selectedWord === word) {
       setSelectedWord(remaining[0] || "");
     }
+
+    try {
+      await supabase
+        .from('hfc_news_keywords')
+        .delete()
+        .eq('word', word);
+    } catch (e) {
+      console.error('Failed to delete keyword from DB:', e);
+    }
   };
 
   const handleStartEditing = (word: string) => {
@@ -257,7 +299,7 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
     setEditingValue(word);
   };
 
-  const handleSaveEditWord = (oldWord: string) => {
+  const handleSaveEditWord = async (oldWord: string) => {
     const trimmed = editingValue.trim();
     if (!trimmed || oldWord === trimmed) {
       setEditingWord(null);
@@ -272,7 +314,10 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
       return;
     }
 
-    setWords(words.map(w => w === oldWord ? capitalized : w));
+    const updated = words.map(w => w === oldWord ? capitalized : w);
+    setWords(updated);
+    localStorage.setItem('hfc_news_words', JSON.stringify(updated));
+
     setNews(prev => {
       const copy = { ...prev };
       if (copy[oldWord]) {
@@ -290,6 +335,19 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
       setSelectedWord(capitalized);
     }
     setEditingWord(null);
+
+    try {
+      // Delete old and insert new in Supabase
+      await supabase
+        .from('hfc_news_keywords')
+        .delete()
+        .eq('word', oldWord);
+      await supabase
+        .from('hfc_news_keywords')
+        .insert({ word: capitalized });
+    } catch (e) {
+      console.error('Failed to update keyword in DB:', e);
+    }
   };
 
   return (

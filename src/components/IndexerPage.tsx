@@ -43,7 +43,7 @@ export function IndexerPage() {
   const [macroData, setMacroData] = useState<MacroScenario | null>(null);
 
   // Profile and Horizon states (defaults, read from localStorage fallback)
-  const [profile] = useState<'conservador' | 'moderado' | 'arrojado'>(() => {
+  const [profile, setProfile] = useState<'conservador' | 'moderado' | 'arrojado'>(() => {
     const saved = localStorage.getItem('hfc_profile');
     return (saved as any) || 'moderado';
   });
@@ -51,6 +51,11 @@ export function IndexerPage() {
     const saved = localStorage.getItem('hfc_horizon');
     return (saved as any) || 'medio';
   });
+
+  const handleProfileChange = (newProfile: 'conservador' | 'moderado' | 'arrojado') => {
+    setProfile(newProfile);
+    localStorage.setItem('hfc_profile', newProfile);
+  };
 
   // Expectativa Própria
   const [expectativaPropria] = useState(() => {
@@ -207,7 +212,6 @@ export function IndexerPage() {
       preRaw = baseWeights.pre / 100;
     }
     const preFrac = toFraction(preRaw);
-    const prePct = preFrac * 100;
 
     // Update PRE binding
     bindings.aloc_pre = preFrac;
@@ -224,7 +228,6 @@ export function IndexerPage() {
       ipcaRaw = baseWeights.ipca / 100;
     }
     const ipcaFrac = toFraction(ipcaRaw);
-    const ipcaPct = ipcaFrac * 100;
 
     // Update IPCA binding
     bindings.aloc_ipca = ipcaFrac;
@@ -241,16 +244,40 @@ export function IndexerPage() {
       cdiRaw = baseWeights.cdi / 100;
     }
     const cdiFrac = toFraction(cdiRaw);
-    const cdiPct = cdiFrac * 100;
 
     // Update CDI binding
     bindings.aloc_pos = cdiFrac;
 
-    // Direct mapping to final weights rounded to 1 decimal place
+    // Define the mandatory bands for each profile
+    const PROFILE_BANDS = {
+      conservador: {
+        cdi: { min: 20, max: 70 },
+        ipca: { min: 0, max: 20 },
+        pre: { min: 0, max: 10 }
+      },
+      moderado: {
+        cdi: { min: 15, max: 50 },
+        ipca: { min: 10, max: 40 },
+        pre: { min: 5, max: 20 }
+      },
+      arrojado: {
+        cdi: { min: 5, max: 30 },
+        ipca: { min: 10, max: 30 },
+        pre: { min: 5, max: 20 }
+      }
+    };
+
+    const bands = PROFILE_BANDS[profile] || PROFILE_BANDS.moderado;
+
+    // Calculate final weights scaled proportionately inside the band
+    const preScaledPct = bands.pre.min + (bands.pre.max - bands.pre.min) * preFrac;
+    const ipcaScaledPct = bands.ipca.min + (bands.ipca.max - bands.ipca.min) * ipcaFrac;
+    const cdiScaledPct = bands.cdi.min + (bands.cdi.max - bands.cdi.min) * cdiFrac;
+
     const finalWeights = {
-      cdi: Math.round(cdiPct * 10) / 10,
-      ipca: Math.round(ipcaPct * 10) / 10,
-      pre: Math.round(prePct * 10) / 10
+      cdi: Math.round(cdiScaledPct * 10) / 10,
+      ipca: Math.round(ipcaScaledPct * 10) / 10,
+      pre: Math.round(preScaledPct * 10) / 10
     };
 
     return {
@@ -305,7 +332,44 @@ export function IndexerPage() {
         </div>
       </div>
 
-      {/* THREE INDEXER BOXES - PROMINENT AT THE TOP */}
+      {/* Profile Filter Section */}
+      <div className="flex flex-wrap items-center gap-4 bg-muted/5 p-4 border border-border/40 select-none">
+        <div className="flex items-center gap-2">
+          <span className="font-sans text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            Perfil de Investimento:
+          </span>
+          <div className="flex items-center gap-1.5">
+            {(['conservador', 'moderado', 'arrojado'] as const).map((p) => {
+              const isActive = profile === p;
+              const labels = { conservador: 'Conservador', moderado: 'Moderado', arrojado: 'Arrojado' };
+              return (
+                <button
+                  key={p}
+                  onClick={() => handleProfileChange(p)}
+                  className={`px-3 py-1.5 border text-[9px] font-sans font-black uppercase tracking-wider text-center transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-foreground text-background border-foreground font-black'
+                      : 'border-border/50 bg-background text-muted-foreground hover:border-border hover:text-foreground'
+                  }`}
+                >
+                  {labels[p]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <span className="h-4 w-px bg-border/60 hidden md:block" />
+
+        <div className="text-[10px] font-sans text-muted-foreground leading-relaxed">
+          As alocações alvo abaixo são ajustadas dinamicamente dentro dos limites mandatórios do perfil selecionado:
+          <span className="ml-1 text-foreground font-semibold">
+            {profile === 'conservador' && 'CDI (20-70%) | IPCA (0-20%) | PRÉ (0-10%)'}
+            {profile === 'moderado' && 'CDI (15-50%) | IPCA (10-40%) | PRÉ (5-20%)'}
+            {profile === 'arrojado' && 'CDI (5-30%) | IPCA (10-30%) | PRÉ (5-20%)'}
+          </span>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0">
         {/* Box 1: CDI */}
         <div className="border border-border/80 bg-card p-6 flex flex-col justify-between shadow-xs relative overflow-hidden">

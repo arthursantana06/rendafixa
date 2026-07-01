@@ -161,10 +161,54 @@ export function PerfisInvestidorPage() {
             Matriz de alocação de ativos e limites regulatórios por enquadramento de perfil.
           </p>
         </div>
+      </div>
 
-        <div className="flex items-center gap-2 border border-border/40 bg-muted/5 px-4 py-2 text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground">
-          <Shield className="h-4.5 w-4.5 text-foreground/75" />
-          <span>Políticas de Risco Ativas</span>
+      {/* Resumo da Política de Investimentos (Unidades 1 e 2) */}
+      <div className="border border-border bg-card p-6 space-y-4">
+        <h3 className="font-sans text-[11px] font-black uppercase tracking-widest text-foreground border-b border-border/30 pb-2 flex items-center gap-2">
+          <Shield className="h-4 w-4 text-muted-foreground" />
+          Diretrizes de Alocação e Suitability (Resumo das Unidades 1 & 2 do Manual)
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-sans text-xs text-muted-foreground leading-relaxed">
+          {/* Unidade 1: Introdução e Governança do Documento */}
+          <div className="space-y-2.5">
+            <h4 className="font-sans text-[10px] font-bold uppercase tracking-wider text-foreground">
+              Unidade 1: Governança & Objetivo Fiduciário
+            </h4>
+            <ul className="list-disc pl-4 space-y-1.5">
+              <li>
+                <strong className="text-foreground">Compromisso Fiduciário:</strong> Estabelece as diretrizes estruturais, metodológicas e operacionais para a alocação de portfólios, garantindo que as recomendações estejam em estrito alinhamento ao perfil do investidor.
+              </li>
+              <li>
+                <strong className="text-foreground">Base Regulatória:</strong> Em total conformidade com a regulação vigente da CVM, notadamente as diretrizes da <strong className="text-foreground font-mono">Resolução CVM nº 30</strong> (dever de Suitability), e os Códigos ANBIMA de Administração de Recursos.
+              </li>
+              <li>
+                <strong className="text-foreground">Comitê de Investimentos:</strong> As premissas e prêmios de risco de cada classe de ativos são revisados anualmente pelo comitê interno ou sob choques sistêmicos e alterações materiais de mercado.
+              </li>
+            </ul>
+          </div>
+
+          {/* Unidade 2: Metodologia de KYC (Know Your Customer) e API */}
+          <div className="space-y-2.5">
+            <h4 className="font-sans text-[10px] font-bold uppercase tracking-wider text-foreground">
+              Unidade 2: Metodologia de Adequação (KYC / API)
+            </h4>
+            <ul className="list-disc pl-4 space-y-1.5">
+              <li>
+                <strong className="text-foreground">Situação Financeira:</strong> Avalia a capacidade empírica de absorver perdas patrimoniais sem comprometer o padrão de vida (reserva de emergência, fluxo de caixa e patrimônio líquido).
+              </li>
+              <li>
+                <strong className="text-foreground">Objetivos e Horizonte Temporal:</strong> Mapeia a finalidade dos recursos (aposentadoria, sucessão, etc.). O tempo é tratado como o principal mitigador natural de volatilidade do portfólio.
+              </li>
+              <li>
+                <strong className="text-foreground">Conhecimento Prático:</strong> Mede a familiaridade do investidor com conceitos como marcação a mercado, risco de crédito, risco de liquidez e derivativos.
+              </li>
+              <li>
+                <strong className="text-foreground">Validade de API:</strong> O perfil de investidor aprovado possui validade estrita de <strong className="text-foreground">24 meses</strong>. Após este período, a carteira fica impedida de receber novas alocações de risco até a renovação formal do questionário.
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
 
