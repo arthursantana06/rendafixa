@@ -12,10 +12,12 @@ import { DataExtractionPage } from '@/components/DataExtractionPage';
 import { IndexerPage } from '@/components/IndexerPage';
 import { IndexerDataPage } from '@/components/IndexerDataPage';
 import { BankDetailsModal } from '@/components/BankDetailsModal';
+import { PainelPage } from '@/components/PainelPage';
+import { RendaVariavelPage } from '@/components/RendaVariavelPage';
 import { analyzeAllBanks } from '@/lib/analysis';
 import { INDICATORS, getDefaultWeights, getDefaultKnockouts } from '@/lib/indicators';
 import { supabase } from '@/lib/supabase';
-import type { BankData, BankAnalysis, IndicatorKey, KnockoutLevel, MainTab, SubTab, ParametroIndicador, IndicatorConfig } from '@/types';
+import type { BankData, BankAnalysis, IndicatorKey, KnockoutLevel, MainTab, SubTab, ParametroIndicador, IndicatorConfig, AppModule } from '@/types';
 import { FileSpreadsheet } from 'lucide-react';
 
 // Helper to derive sigla from label automatically
@@ -46,6 +48,11 @@ const DEFAULT_FORMULAS: Record<string, string> = {
 };
 
 function App() {
+  const [activeModule, setActiveModule] = useState<AppModule>(() => {
+    const saved = localStorage.getItem('activeModule');
+    return (saved as AppModule) || 'renda_fixa';
+  });
+
   const [activeMainTab, setActiveMainTab] = useState<MainTab>(() => {
     const saved = localStorage.getItem('activeMainTab');
     return (saved as MainTab) || 'emissor';
@@ -54,6 +61,10 @@ function App() {
     const saved = localStorage.getItem('activeSubTab');
     return (saved as SubTab) || 'analise';
   });
+
+  useEffect(() => {
+    localStorage.setItem('activeModule', activeModule);
+  }, [activeModule]);
 
   useEffect(() => {
     localStorage.setItem('activeMainTab', activeMainTab);
@@ -350,6 +361,8 @@ function App() {
     <TooltipProvider delayDuration={200}>
       <div className="flex h-screen flex-col bg-background selection:bg-foreground selection:text-background overflow-hidden">
         <Header
+          activeModule={activeModule}
+          onModuleChange={setActiveModule}
           activeMainTab={activeMainTab}
           activeSubTab={activeSubTab}
           onMainTabChange={handleMainTabChange}
@@ -357,16 +370,24 @@ function App() {
         />
 
         <main className={`flex-1 w-full relative ${
-          activeMainTab === 'emissor' && (activeSubTab === 'metodologia' || activeSubTab === 'extracao')
+          activeModule === 'renda_fixa' && activeMainTab === 'emissor' && (activeSubTab === 'metodologia' || activeSubTab === 'extracao')
             ? 'overflow-hidden flex flex-col min-h-0' 
             : 'overflow-y-auto'
         }`}>
           <div className={`max-w-[1920px] mx-auto w-full ${
-            activeMainTab === 'emissor' && (activeSubTab === 'metodologia' || activeSubTab === 'extracao')
+            activeModule === 'renda_fixa' && activeMainTab === 'emissor' && (activeSubTab === 'metodologia' || activeSubTab === 'extracao')
               ? 'flex-1 min-h-0 flex flex-col overflow-hidden h-full'
               : 'pb-12'
           }`}>
-          {activeMainTab === 'emissor' && activeSubTab === 'analise' && (
+          {activeModule === 'painel' && (
+            <PainelPage analyses={analyses} isLoading={isLoading} />
+          )}
+
+          {activeModule === 'renda_variavel' && (
+            <RendaVariavelPage />
+          )}
+
+          {activeModule === 'renda_fixa' && activeMainTab === 'emissor' && activeSubTab === 'analise' && (
             <>
               {isLoading && (
                 <div className="flex flex-col items-center justify-center py-32 mt-8 mx-8 border-t border-border/40">
@@ -409,7 +430,7 @@ function App() {
             </>
           )}
 
-          {activeMainTab === 'emissor' && activeSubTab === 'metodologia' && (
+          {activeModule === 'renda_fixa' && activeMainTab === 'emissor' && activeSubTab === 'metodologia' && (
             <MethodologyPage 
               indicators={indicators}
               parameters={parameters} 
@@ -429,10 +450,10 @@ function App() {
             />
           )}
           
-          {activeMainTab === 'emissor' && activeSubTab === 'extracao' && <DataExtractionPage onUploadSuccess={fetchBanks} />}
+          {activeModule === 'renda_fixa' && activeMainTab === 'emissor' && activeSubTab === 'extracao' && <DataExtractionPage onUploadSuccess={fetchBanks} />}
           
-          {activeMainTab === 'indexador' && activeSubTab === 'analise' && <IndexerPage />}
-          {activeMainTab === 'indexador' && activeSubTab === 'extracao' && <IndexerDataPage />}
+          {activeModule === 'renda_fixa' && activeMainTab === 'indexador' && activeSubTab === 'analise' && <IndexerPage />}
+          {activeModule === 'renda_fixa' && activeMainTab === 'indexador' && activeSubTab === 'extracao' && <IndexerDataPage />}
           </div>
         </main>
 

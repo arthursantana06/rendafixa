@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { evaluateFormula } from '@/lib/formulaParser';
 import { 
   Database, 
   Upload, 
@@ -9,7 +10,8 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-  Newspaper
+  Newspaper,
+  Sliders
 } from 'lucide-react';
 import Papa from 'papaparse';
 // @ts-ignore
@@ -70,6 +72,47 @@ export function IndexerDataPage() {
   const [taxaMediaHistorica, setTaxaMediaHistorica] = useState(8.50);
   const [taxaMediaHistoricaStr, setTaxaMediaHistoricaStr] = useState("8.50");
 
+  // Expectativa Própria Formula & Subtabs
+  const [expectativaPropriaFormula, setExpectativaPropriaFormula] = useState(() => {
+    return localStorage.getItem('hfc_expectativa_propria_formula') || "J_atual - mult_ef";
+  });
+  const [activeSubTab, setActiveSubTab] = useState<'modelagem' | 'variaveis'>('modelagem');
+
+  // Custom variables
+  const [customVariables, setCustomVariables] = useState<Array<{
+    id: string;
+    name: string;
+    code: string;
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+  }>>(() => {
+    const saved = localStorage.getItem('hfc_custom_variables');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { }
+    }
+    return [
+      {
+        id: "1",
+        name: "Multiplicador de eficiência",
+        code: "mult_ef",
+        value: 1.50,
+        min: 0,
+        max: 5,
+        step: 0.1
+      }
+    ];
+  });
+
+  // Form states
+  const [newVarName, setNewVarName] = useState('');
+  const [newVarCode, setNewVarCode] = useState('');
+  const [newVarMin, setNewVarMin] = useState(0);
+  const [newVarMax, setNewVarMax] = useState(10);
+  const [newVarValue, setNewVarValue] = useState(1);
+  const [newVarError, setNewVarError] = useState('');
+
   // Historical Selic Real states
   const [selicHistory, setSelicHistory] = useState<SelicPoint[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<SelicPoint[]>([]);
@@ -99,6 +142,7 @@ export function IndexerDataPage() {
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [newsError, setNewsError] = useState<string | null>(null);
   const [isNewsOpen, setIsNewsOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
   // SVG Chart Sizing (scaled responsive coordinates)
   const paddingX = 60;
@@ -180,6 +224,130 @@ export function IndexerDataPage() {
         setTaxaMediaHistorica(parsed);
       }
     }
+  };
+
+  // Evaluate E_propria calculation in real-time
+  const parsedExpectativaPropriaResult = useMemo(() => {
+    // Bindings
+    const bindings: Record<string, number> = {
+      J_atual: jurosAtuais,
+      juros_atuais: jurosAtuais,
+      E_bacen: expectativaJurosBacen2029,
+      expectativa_juros_bacen_2029: expectativaJurosBacen2029,
+      J_futuro: jurosFuturosD1f29,
+      juros_futuros_d1f29: jurosFuturosD1f29,
+      T_pre: valorTaxaPrefixada2029,
+      valor_taxa_prefixada_2029: valorTaxaPrefixada2029,
+      T_hist: taxaMediaHistorica,
+      taxa_media_historica: taxaMediaHistorica,
+      e: Math.E,
+      E: Math.E,
+    };
+    
+    // Add custom variables values to bindings
+    customVariables.forEach(v => {
+      if (v.code && v.code.trim()) {
+        bindings[v.code.trim()] = v.value;
+      }
+    });
+    
+    try {
+      if (!expectativaPropriaFormula || expectativaPropriaFormula.trim() === '') {
+        return { value: 10.00, error: 'Fórmula vazia.', isValid: false };
+      }
+      const val = evaluateFormula(expectativaPropriaFormula, bindings);
+      return {
+        value: Math.round(val * 100) / 100,
+        error: null,
+        isValid: true
+      };
+    } catch (e: any) {
+      return {
+        value: 10.00,
+        error: e.message || 'Erro de cálculo.',
+        isValid: false
+      };
+    }
+  }, [
+    expectativaPropriaFormula,
+    jurosAtuais,
+    expectativaJurosBacen2029,
+    jurosFuturosD1f29,
+    valorTaxaPrefixada2029,
+    taxaMediaHistorica,
+    customVariables
+  ]);
+
+  // Synchronize computed formula value to localStorage key hfc_expectativa_propria
+  useEffect(() => {
+    if (parsedExpectativaPropriaResult.isValid) {
+      localStorage.setItem('hfc_expectativa_propria', String(parsedExpectativaPropriaResult.value));
+    }
+  }, [parsedExpectativaPropriaResult]);
+
+  const handleAddCustomVariable = (e: React.FormEvent) => {
+    e.preventDefault();
+    setNewVarError('');
+    const cleanCode = newVarCode.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+    const cleanName = newVarName.trim();
+    
+    if (!cleanCode) {
+      setNewVarError('Código inválido.');
+      return;
+    }
+    
+    // Check conflicts with macro variables
+    const reserved = ['j_atual', 'juros_atuais', 'e_bacen', 'expectativa_juros_bacen_2029', 'j_futuro', 'juros_futuros_d1f29', 't_pre', 'valor_taxa_prefixada_2029', 't_hist', 'taxa_media_historica', 'e', 'expectativa_propria', 'e_propria'];
+    if (reserved.includes(cleanCode)) {
+      setNewVarError(`O código "${cleanCode}" é reservado pelo sistema.`);
+      return;
+    }
+    
+    // Check duplicates
+    if (customVariables.some(v => v.code === cleanCode)) {
+      setNewVarError(`A variável "${cleanCode}" já existe.`);
+      return;
+    }
+    
+    const newVar = {
+      id: Date.now().toString(),
+      name: cleanName,
+      code: cleanCode,
+      value: newVarValue,
+      min: newVarMin,
+      max: newVarMax,
+      step: (newVarMax - newVarMin) / 100 > 0 ? Math.round(((newVarMax - newVarMin) / 100) * 100) / 100 : 0.05
+    };
+    
+    const updated = [...customVariables, newVar];
+    setCustomVariables(updated);
+    localStorage.setItem('hfc_custom_variables', JSON.stringify(updated));
+    
+    // Reset form
+    setNewVarName('');
+    setNewVarCode('');
+    setNewVarMin(0);
+    setNewVarMax(10);
+    setNewVarValue(1);
+  };
+
+  const handleRemoveCustomVariable = (id: string) => {
+    const updated = customVariables.filter(v => v.id !== id);
+    setCustomVariables(updated);
+    localStorage.setItem('hfc_custom_variables', JSON.stringify(updated));
+  };
+
+  const handleCustomVariableSliderChange = (id: string, val: number) => {
+    const updated = customVariables.map(v => {
+      if (v.id === id) {
+        const clamped = Math.max(v.min, Math.min(v.max, val));
+        const rounded = Math.round(clamped * 100) / 100;
+        return { ...v, value: rounded };
+      }
+      return v;
+    });
+    setCustomVariables(updated);
+    localStorage.setItem('hfc_custom_variables', JSON.stringify(updated));
   };
 
   const loadSelicFromDB = async () => {
@@ -802,25 +970,35 @@ export function IndexerDataPage() {
             </h3>
           </div>
           
-          {/* Period Selector Buttons */}
-          <div className="flex items-center gap-1.5 bg-muted/20 p-1 border border-border/50">
-            {(['1y', '2y', '5y', '10y', 'all'] as const).map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setTimeFilter(filter)}
-                className={`px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                  timeFilter === filter
-                    ? 'bg-foreground text-background font-bold'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {filter === '1y' && '1 Ano'}
-                {filter === '2y' && '2 Anos'}
-                {filter === '5y' && '5 Anos'}
-                {filter === '10y' && '10 Anos'}
-                {filter === 'all' && 'Tudo'}
-              </button>
-            ))}
+          <div className="flex items-center gap-3">
+            {/* Period Selector Buttons */}
+            <div className="flex items-center gap-1.5 bg-muted/20 p-1 border border-border/50">
+              {(['1y', '2y', '5y', '10y', 'all'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setTimeFilter(filter)}
+                  className={`px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                    timeFilter === filter
+                      ? 'bg-foreground text-background font-bold'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {filter === '1y' && '1 Ano'}
+                  {filter === '2y' && '2 Anos'}
+                  {filter === '5y' && '5 Anos'}
+                  {filter === '10y' && '10 Anos'}
+                  {filter === 'all' && 'Tudo'}
+                </button>
+              ))}
+            </div>
+
+            {/* Import Trigger Button */}
+            <button
+              onClick={() => setIsUploadOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-foreground border border-foreground text-background font-sans text-[9px] font-black uppercase tracking-wider hover:bg-foreground/90 transition-all duration-300 cursor-pointer font-bold"
+            >
+              <Upload className="h-3.5 w-3.5" /> Importar Histórico
+            </button>
           </div>
         </div>
 
@@ -980,7 +1158,7 @@ export function IndexerDataPage() {
         </div>
       </div>
 
-      {/* Grid Layout: Inputs on Left, Functional CSV upload on Right */}
+      {/* Grid Layout: Inputs on Left, Expectativa Própria on Right */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch flex-1 min-h-0">
         
         {/* Column 1: Manual parameters input */}
@@ -996,19 +1174,19 @@ export function IndexerDataPage() {
 
           <div className="flex flex-col gap-5">
             {/* 1. Juros Atuais */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-sans">
-                <span className="text-muted-foreground font-medium">Juros Atuais</span>
-                <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground font-semibold">Juros Atuais</span>
+                <div className="flex items-center gap-1">
                   <input
                     type="number"
                     step="0.01"
                     value={jurosAtuaisStr}
                     onChange={(e) => updateJurosAtuais(e.target.value)}
                     onBlur={() => setJurosAtuaisStr(jurosAtuais.toString())}
-                    className="w-16 bg-background border border-border/80 font-mono text-xs font-bold text-center py-0.5 text-foreground focus:outline-none focus:border-foreground"
+                    className="w-16 bg-muted/10 border border-border/80 font-mono text-xs font-bold text-center py-0.5 px-1 text-foreground focus:outline-none focus:border-foreground transition-colors"
                   />
-                  <span className="text-muted-foreground font-mono">%</span>
+                  <span className="text-muted-foreground font-mono text-[10px]">%</span>
                 </div>
               </div>
               <input
@@ -1018,24 +1196,24 @@ export function IndexerDataPage() {
                 step="0.05"
                 value={jurosAtuais}
                 onChange={(e) => updateJurosAtuais(Number(e.target.value))}
-                className="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer accent-foreground"
+                className="premium-range-slider cursor-pointer"
               />
             </div>
 
             {/* 2. Expectativa Juros BACEN (2029) */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-sans">
-                <span className="text-muted-foreground font-medium">Expectativa Juros BACEN (2029)</span>
-                <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground font-semibold">Expectativa Juros BACEN (2029)</span>
+                <div className="flex items-center gap-1">
                   <input
                     type="number"
                     step="0.01"
                     value={expectativaJurosBacen2029Str}
                     onChange={(e) => updateExpectativaJurosBacen2029(e.target.value)}
                     onBlur={() => setExpectativaJurosBacen2029Str(expectativaJurosBacen2029.toString())}
-                    className="w-16 bg-background border border-border/80 font-mono text-xs font-bold text-center py-0.5 text-foreground focus:outline-none focus:border-foreground"
+                    className="w-16 bg-muted/10 border border-border/80 font-mono text-xs font-bold text-center py-0.5 px-1 text-foreground focus:outline-none focus:border-foreground transition-colors"
                   />
-                  <span className="text-muted-foreground font-mono">%</span>
+                  <span className="text-muted-foreground font-mono text-[10px]">%</span>
                 </div>
               </div>
               <input
@@ -1045,24 +1223,24 @@ export function IndexerDataPage() {
                 step="0.05"
                 value={expectativaJurosBacen2029}
                 onChange={(e) => updateExpectativaJurosBacen2029(Number(e.target.value))}
-                className="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer accent-foreground"
+                className="premium-range-slider cursor-pointer"
               />
             </div>
 
             {/* 3. Juros Futuros (d1f29) */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-sans">
-                <span className="text-muted-foreground font-medium">Juros Futuros (d1f29)</span>
-                <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground font-semibold">Juros Futuros (d1f29)</span>
+                <div className="flex items-center gap-1">
                   <input
                     type="number"
                     step="0.01"
                     value={jurosFuturosD1f29Str}
                     onChange={(e) => updateJurosFuturosD1f29(e.target.value)}
                     onBlur={() => setJurosFuturosD1f29Str(jurosFuturosD1f29.toString())}
-                    className="w-16 bg-background border border-border/80 font-mono text-xs font-bold text-center py-0.5 text-foreground focus:outline-none focus:border-foreground"
+                    className="w-16 bg-muted/10 border border-border/80 font-mono text-xs font-bold text-center py-0.5 px-1 text-foreground focus:outline-none focus:border-foreground transition-colors"
                   />
-                  <span className="text-muted-foreground font-mono">%</span>
+                  <span className="text-muted-foreground font-mono text-[10px]">%</span>
                 </div>
               </div>
               <input
@@ -1072,24 +1250,24 @@ export function IndexerDataPage() {
                 step="0.05"
                 value={jurosFuturosD1f29}
                 onChange={(e) => updateJurosFuturosD1f29(Number(e.target.value))}
-                className="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer accent-foreground"
+                className="premium-range-slider cursor-pointer"
               />
             </div>
 
-            {/* 4. Valor da Taxa Prefixada para 2029 */}
-            <div className="space-y-1.5">
+            {/* 4. Taxa Prefixada para 2029 */}
+            <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-sans">
-                <span className="text-muted-foreground font-medium">Taxa Prefixada para 2029</span>
-                <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground font-semibold">Taxa Prefixada para 2029</span>
+                <div className="flex items-center gap-1">
                   <input
                     type="number"
                     step="0.01"
                     value={valorTaxaPrefixada2029Str}
                     onChange={(e) => updateValorTaxaPrefixada2029(e.target.value)}
                     onBlur={() => setValorTaxaPrefixada2029Str(valorTaxaPrefixada2029.toString())}
-                    className="w-16 bg-background border border-border/80 font-mono text-xs font-bold text-center py-0.5 text-foreground focus:outline-none focus:border-foreground"
+                    className="w-16 bg-muted/10 border border-border/80 font-mono text-xs font-bold text-center py-0.5 px-1 text-foreground focus:outline-none focus:border-foreground transition-colors"
                   />
-                  <span className="text-muted-foreground font-mono">%</span>
+                  <span className="text-muted-foreground font-mono text-[10px]">%</span>
                 </div>
               </div>
               <input
@@ -1099,24 +1277,24 @@ export function IndexerDataPage() {
                 step="0.05"
                 value={valorTaxaPrefixada2029}
                 onChange={(e) => updateValorTaxaPrefixada2029(Number(e.target.value))}
-                className="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer accent-foreground"
+                className="premium-range-slider cursor-pointer"
               />
             </div>
 
             {/* 5. Taxa Média Histórica */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-sans">
-                <span className="text-muted-foreground font-medium">Taxa Média Histórica</span>
-                <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground font-semibold">Taxa Média Histórica</span>
+                <div className="flex items-center gap-1">
                   <input
                     type="number"
                     step="0.01"
                     value={taxaMediaHistoricaStr}
                     onChange={(e) => updateTaxaMediaHistorica(e.target.value)}
                     onBlur={() => setTaxaMediaHistoricaStr(taxaMediaHistorica.toString())}
-                    className="w-16 bg-background border border-border/80 font-mono text-xs font-bold text-center py-0.5 text-foreground focus:outline-none focus:border-foreground"
+                    className="w-16 bg-muted/10 border border-border/80 font-mono text-xs font-bold text-center py-0.5 px-1 text-foreground focus:outline-none focus:border-foreground transition-colors"
                   />
-                  <span className="text-muted-foreground font-mono">%</span>
+                  <span className="text-muted-foreground font-mono text-[10px]">%</span>
                 </div>
               </div>
               <input
@@ -1126,85 +1304,273 @@ export function IndexerDataPage() {
                 step="0.05"
                 value={taxaMediaHistorica}
                 onChange={(e) => updateTaxaMediaHistorica(Number(e.target.value))}
-                className="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer accent-foreground"
+                className="premium-range-slider cursor-pointer"
               />
             </div>
           </div>
         </div>
 
-        {/* Column 2: CSV Import zone */}
-        <div className="border border-border/60 bg-card p-6 flex flex-col gap-6 h-full">
-          <div className="flex items-center justify-between border-b border-border/60 pb-2">
-            <h3 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground flex items-center gap-2">
-              <Upload className="h-4.5 w-4.5 text-muted-foreground" />
-              Upload Histórico Selic
+        {/* Column 2: Expectativa Própria de Juros */}
+        <div className="border border-border/60 bg-card p-6 shadow-xs flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-border/30 pb-2 mb-2">
+            <h3 className="font-serif text-lg text-foreground flex items-center gap-2">
+              <Sliders className="h-4.5 w-4.5 text-muted-foreground" />
+              Expectativa Própria de Juros
             </h3>
-            {lastUpload && (
-              <span className="font-sans text-[9px] text-muted-foreground font-bold">
-                Último Envio: {lastUpload}
-              </span>
-            )}
+          </div>
+          
+          {/* Subtabs for modeling vs custom variables */}
+          <div className="flex border-b border-border/20 text-xs font-sans mb-2">
+            <button
+              onClick={() => setActiveSubTab('modelagem')}
+              className={`px-3 py-1.5 border-b-2 font-bold uppercase tracking-wider cursor-pointer transition-colors ${
+                activeSubTab === 'modelagem'
+                  ? 'border-foreground text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Modelagem da Projeção
+            </button>
+            <button
+              onClick={() => setActiveSubTab('variaveis')}
+              className={`px-3 py-1.5 border-b-2 font-bold uppercase tracking-wider cursor-pointer transition-colors ${
+                activeSubTab === 'variaveis'
+                  ? 'border-foreground text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Variáveis Customizadas ({customVariables.length})
+            </button>
           </div>
 
-          <p className="font-sans text-xs text-muted-foreground leading-relaxed">
-            Arraste e solte o arquivo <strong className="text-foreground">historico_selic_over.csv</strong> para sincronizar e atualizar o histórico da taxa Selic no banco de dados.
-          </p>
+          {activeSubTab === 'modelagem' ? (
+            <div className="space-y-4 flex-1">
+              <p className="font-sans text-[11px] text-muted-foreground leading-relaxed">
+                Crie um modelo algébrico para estimar a taxa de juros futura (Jan/2029) baseado nas variáveis macroeconômicas ou variáveis customizadas adicionadas por você. O spread tático será calculado comparando este valor com o contrato futuro de mercado.
+              </p>
 
-          {/* Drag & Drop Zone */}
-          <div
-            className={`relative border-2 border-dashed flex-1 flex flex-col items-center justify-center p-6 min-h-[160px] transition-all duration-300 ${
-              dragActive ? 'border-foreground bg-muted/20 scale-[0.99]' : 'border-border/60 hover:border-foreground/50 bg-muted/5'
-            } ${uploadStatus === 'success' ? 'border-emerald-500/30 bg-emerald-500/5' : ''} ${
-              uploadStatus === 'error' ? 'border-destructive/30 bg-destructive/5' : ''
-            }`}
-            onDragEnter={handleDrag}
-            onDragOver={handleDrag}
-            onDragLeave={handleDrag}
-            onDrop={handleDrop}
-          >
-            <input 
-              type="file" 
-              accept=".csv" 
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-              onChange={handleFileChange}
-              disabled={isProcessing}
-              title="Selecionar arquivo CSV do histórico Selic"
-            />
-            
-            {uploadStatus === 'success' ? (
-              <CheckCircle2 className="h-10 w-10 text-emerald-500 mb-2 animate-in zoom-in duration-300" />
-            ) : uploadStatus === 'error' ? (
-              <AlertCircle className="h-10 w-10 text-destructive mb-2 animate-in zoom-in duration-300" />
-            ) : (
-              <FileSpreadsheet className={`h-10 w-10 text-muted-foreground mb-2 transition-transform ${isProcessing ? 'animate-bounce' : ''}`} />
-            )}
-            
-            <span className="font-sans text-[11px] font-bold uppercase tracking-wider block mb-1 text-foreground">
-              {isProcessing ? 'Processando dados...' : 'Área de Upload de Planilhas'}
-            </span>
-            <span className="font-sans text-[9px] text-muted-foreground/80 text-center max-w-[280px]">
-              Solte o arquivo CSV aqui ou clique para selecionar.
-            </span>
-          </div>
-
-          {/* Real-time ETL Console log */}
-          <div className="bg-muted/10 p-4 border border-border/20 flex flex-col gap-3 min-h-[160px] max-h-[220px]">
-            <h4 className="font-sans text-[10px] font-bold uppercase tracking-wider text-foreground">
-              Console de Integração ETL
-            </h4>
-            {logs.length > 0 ? (
-              <div className="flex-1 overflow-y-auto font-mono text-[9px] leading-normal text-foreground/80 bg-black/10 p-3 flex flex-col gap-1 border border-border/30">
-                {logs.map((lg, i) => (
-                  <div key={i} className="whitespace-pre-wrap">{lg}</div>
-                ))}
-                <div ref={consoleEndRef} />
+              {/* Prominent result display card */}
+              <div className="border border-border/60 bg-muted/5 p-4 flex items-center justify-between shadow-xs">
+                <div>
+                  <span className="font-sans text-[9px] font-bold uppercase tracking-widest text-muted-foreground block mb-0.5">
+                    Projeção de Juros Calculada (E_propria)
+                  </span>
+                  <p className="font-sans text-[11px] text-muted-foreground/80 leading-snug">
+                    Com base no modelo matemático ativo abaixo.
+                  </p>
+                </div>
+                <div className="text-right flex flex-col items-end">
+                  {parsedExpectativaPropriaResult.error ? (
+                    <div className="flex items-center gap-1.5 text-red-500 font-sans font-bold text-sm">
+                      <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                      Erro de Modelagem
+                    </div>
+                  ) : (
+                    <div className="flex items-baseline gap-0.5">
+                      <span className="font-mono text-3xl font-black text-foreground tracking-tight">
+                        {parsedExpectativaPropriaResult.value.toFixed(2)}
+                      </span>
+                      <span className="font-mono text-sm font-bold text-muted-foreground">%</span>
+                    </div>
+                  )}
+                  <span className={`inline-flex items-center gap-1 text-[8px] font-sans font-bold uppercase tracking-wider mt-1 px-1.5 py-0.5 border ${
+                    parsedExpectativaPropriaResult.isValid 
+                      ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-600'
+                      : 'border-red-500/20 bg-red-500/5 text-red-500'
+                  }`}>
+                    {parsedExpectativaPropriaResult.isValid ? '✓ FÓRMULA ATIVA' : '⚠ ERRO NA FÓRMULA'}
+                  </span>
+                </div>
               </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center font-mono text-[9px] italic text-muted-foreground bg-black/10 p-3 border border-border/30 text-center">
-                &gt;_ Aguardando upload do historico_selic_over.csv para auditoria em tempo real...
+
+              <div className="space-y-4 pt-1">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-sans font-semibold text-muted-foreground uppercase tracking-wider block">
+                    Expressão Matemática
+                  </label>
+                  <input
+                    type="text"
+                    value={expectativaPropriaFormula}
+                    onChange={(e) => {
+                      setExpectativaPropriaFormula(e.target.value);
+                      localStorage.setItem('hfc_expectativa_propria_formula', e.target.value);
+                    }}
+                    className={`w-full bg-muted/10 border px-3 py-2 font-mono text-xs text-foreground focus:outline-none focus:border-foreground transition-all ${
+                      parsedExpectativaPropriaResult.error ? 'border-red-500/80 focus:border-red-500' : 'border-border/80'
+                    }`}
+                    placeholder="Ex: J_atual - mult_ef"
+                  />
+                  {parsedExpectativaPropriaResult.error && (
+                    <p className="text-[10px] text-red-500 font-mono bg-red-500/5 p-2 border border-red-500/10 leading-relaxed">
+                      {parsedExpectativaPropriaResult.error}
+                    </p>
+                  )}
+                </div>
+
+                {/* Legend of variables */}
+                <div className="border border-border/40 p-3 bg-muted/5 space-y-2">
+                  <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-muted-foreground block border-b border-border/20 pb-1.5">
+                    Variáveis Disponíveis para E_propria
+                  </span>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[10px] font-sans">
+                    <div className="flex justify-between">
+                      <span className="font-mono text-foreground font-semibold">J_atual</span>
+                      <span className="text-muted-foreground font-mono">{jurosAtuais.toFixed(2)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-mono text-foreground font-semibold">E_bacen</span>
+                      <span className="text-muted-foreground font-mono">{expectativaJurosBacen2029.toFixed(2)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-mono text-foreground font-semibold">J_futuro</span>
+                      <span className="text-muted-foreground font-mono">{jurosFuturosD1f29.toFixed(2)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-mono text-foreground font-semibold">T_pre</span>
+                      <span className="text-muted-foreground font-mono">{valorTaxaPrefixada2029.toFixed(2)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-mono text-foreground font-semibold">T_hist</span>
+                      <span className="text-muted-foreground font-mono">{taxaMediaHistorica.toFixed(2)}%</span>
+                    </div>
+                    {customVariables.map(v => (
+                      <div key={v.id} className="flex justify-between border-t border-border/15 pt-1 mt-0.5 col-span-2 sm:col-span-1">
+                        <span className="font-mono text-amber-700 font-bold">{v.code}</span>
+                        <span className="text-muted-foreground font-mono">{v.value.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="space-y-4 flex-1">
+              {/* Form to add a new custom variable */}
+              <form onSubmit={handleAddCustomVariable} className="border border-border/40 bg-muted/5 p-3.5 space-y-2.5">
+                <h4 className="font-sans text-[9px] font-bold uppercase tracking-wider text-foreground border-b border-border/30 pb-1">
+                  Criar Nova Variável
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-sans font-bold uppercase tracking-wider text-muted-foreground block">Nome</label>
+                    <input
+                      type="text"
+                      value={newVarName}
+                      onChange={(e) => setNewVarName(e.target.value)}
+                      className="w-full bg-background border border-border/80 text-xs px-2.5 py-1 text-foreground focus:outline-none focus:border-foreground"
+                      placeholder="Ex: Multiplicador"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-sans font-bold uppercase tracking-wider text-muted-foreground block">Símbolo (Fórmula)</label>
+                    <input
+                      type="text"
+                      value={newVarCode}
+                      onChange={(e) => setNewVarCode(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                      className="w-full bg-background border border-border/80 text-xs font-mono px-2.5 py-1 text-foreground focus:outline-none focus:border-foreground"
+                      placeholder="Ex: mult_ef"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-sans text-muted-foreground block">Mínimo</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={newVarMin}
+                      onChange={(e) => setNewVarMin(Number(e.target.value))}
+                      className="w-full bg-background border border-border/80 text-xs px-2 py-0.5 text-foreground text-center"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-sans text-muted-foreground block">Máximo</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={newVarMax}
+                      onChange={(e) => setNewVarMax(Number(e.target.value))}
+                      className="w-full bg-background border border-border/80 text-xs px-2 py-0.5 text-foreground text-center"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-sans text-muted-foreground block">Inicial</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={newVarValue}
+                      onChange={(e) => setNewVarValue(Number(e.target.value))}
+                      className="w-full bg-background border border-border/80 text-xs px-2 py-0.5 text-foreground text-center"
+                    />
+                  </div>
+                </div>
+
+                {newVarError && (
+                  <p className="text-[10px] text-red-500 font-sans leading-tight">{newVarError}</p>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full py-1 bg-foreground text-background font-sans text-[9px] font-black uppercase tracking-wider hover:bg-foreground/90 transition-colors cursor-pointer font-bold"
+                >
+                  Criar Variável
+                </button>
+              </form>
+
+              {/* List of custom variables */}
+              <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                <h4 className="font-sans text-[9px] font-bold uppercase tracking-wider text-foreground border-b border-border/30 pb-1">
+                  Variáveis Criadas
+                </h4>
+                {customVariables.length === 0 ? (
+                  <p className="text-xs italic text-muted-foreground text-center py-4">
+                    Nenhuma variável customizada adicionada.
+                  </p>
+                ) : (
+                  customVariables.map((v) => (
+                    <div key={v.id} className="border border-border/40 p-2.5 bg-muted/5 space-y-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <div>
+                          <span className="font-sans font-bold text-foreground text-[11px] block">{v.name}</span>
+                          <span className="font-mono text-[9px] text-amber-700 block font-semibold">{v.code}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={v.value}
+                            onChange={(e) => handleCustomVariableSliderChange(v.id, Number(e.target.value))}
+                            className="w-12 bg-background border border-border text-center text-xs font-mono font-bold py-0.5"
+                          />
+                          <button
+                            onClick={() => handleRemoveCustomVariable(v.id)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-500/10 p-1 cursor-pointer transition-colors"
+                            title="Excluir variável"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <input
+                        type="range"
+                        min={v.min}
+                        max={v.max}
+                        step={v.step}
+                        value={v.value}
+                        onChange={(e) => handleCustomVariableSliderChange(v.id, Number(e.target.value))}
+                        className="premium-range-slider cursor-pointer"
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
@@ -1357,6 +1723,114 @@ export function IndexerDataPage() {
                 </div>
               )}
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Histórico Selic Side Drawer */}
+      {isUploadOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex justify-end bg-black/45 backdrop-blur-xs transition-opacity duration-300"
+          onClick={() => setIsUploadOpen(false)}
+        >
+          <div 
+            className="w-full max-w-xl h-full bg-background border-l border-border/60 shadow-2xl flex flex-col p-8 transition-transform duration-300 ease-out select-none animate-slide-in-right"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button at top-right */}
+            <button 
+              onClick={() => setIsUploadOpen(false)}
+              className="absolute top-6 right-6 text-muted-foreground hover:text-foreground transition-colors cursor-pointer p-1.5 hover:bg-muted"
+              title="Fechar Upload"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Title Section */}
+            <div className="mb-6 shrink-0 flex items-start gap-4 pr-10">
+              <div className="bg-muted/50 p-3 border border-border/40 shrink-0">
+                <Upload className="h-6 w-6 text-foreground" />
+              </div>
+              <div>
+                <h3 className="font-serif text-2xl font-bold tracking-tight text-foreground leading-tight">
+                  Upload Histórico Selic
+                </h3>
+                <p className="font-serif text-xs italic text-muted-foreground mt-1">
+                  Sincronize a série histórica de taxas Selic efetivas no banco de dados carregando um arquivo CSV mapeado.
+                </p>
+              </div>
+            </div>
+
+            {/* Content: CSV Import Zone & Console Log */}
+            <div className="flex-1 flex flex-col gap-6 overflow-y-auto pr-2 min-h-0">
+              
+              <div className="flex items-center justify-between border-b border-border/20 pb-2">
+                <span className="font-sans text-xs text-muted-foreground leading-relaxed">
+                  Arraste e solte o arquivo <strong className="text-foreground">historico_selic_over.csv</strong> abaixo.
+                </span>
+                {lastUpload && (
+                  <span className="font-mono text-[9px] text-muted-foreground/80 font-bold bg-muted/20 px-2 py-0.5 border border-border/30">
+                    Último Envio: {lastUpload}
+                  </span>
+                )}
+              </div>
+
+              {/* Drag & Drop Zone */}
+              <div
+                className={`relative border border-dashed flex-shrink-0 flex flex-col items-center justify-center p-6 min-h-[160px] transition-all duration-300 ${
+                  dragActive ? 'border-foreground bg-muted/20 scale-[0.99]' : 'border-border/60 hover:border-foreground/50 bg-muted/5'
+                } ${uploadStatus === 'success' ? 'border-emerald-500/30 bg-emerald-500/5' : ''} ${
+                  uploadStatus === 'error' ? 'border-destructive/30 bg-destructive/5' : ''
+                }`}
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
+              >
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                  onChange={handleFileChange}
+                  disabled={isProcessing}
+                  title="Selecionar arquivo CSV do histórico Selic"
+                />
+                
+                {uploadStatus === 'success' ? (
+                  <CheckCircle2 className="h-10 w-10 text-emerald-500 mb-2 animate-in zoom-in duration-300" />
+                ) : uploadStatus === 'error' ? (
+                  <AlertCircle className="h-10 w-10 text-destructive mb-2 animate-in zoom-in duration-300" />
+                ) : (
+                  <FileSpreadsheet className={`h-10 w-10 text-muted-foreground mb-2 transition-transform ${isProcessing ? 'animate-bounce' : ''}`} />
+                )}
+                
+                <span className="font-sans text-[11px] font-bold uppercase tracking-wider block mb-1 text-foreground">
+                  {isProcessing ? 'Processando dados...' : 'Área de Upload de Planilhas'}
+                </span>
+                <span className="font-sans text-[9px] text-muted-foreground/80 text-center max-w-[280px]">
+                  Solte o arquivo CSV aqui ou clique para selecionar.
+                </span>
+              </div>
+
+              {/* Console log */}
+              <div className="bg-muted/10 p-4 border border-border/20 flex flex-col gap-3 flex-1 min-h-[220px]">
+                <h4 className="font-sans text-[10px] font-bold uppercase tracking-wider text-foreground border-b border-border/30 pb-1.5">
+                  Console de Integração ETL
+                </h4>
+                {logs.length > 0 ? (
+                  <div className="flex-1 overflow-y-auto font-mono text-[9px] leading-normal text-foreground/80 bg-black/20 p-3 flex flex-col gap-1 border border-border/30">
+                    {logs.map((lg, i) => (
+                      <div key={i} className="whitespace-pre-wrap">{lg}</div>
+                    ))}
+                    <div ref={consoleEndRef} />
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center font-mono text-[9px] italic text-muted-foreground bg-black/20 p-3 border border-border/30 text-center">
+                    &gt;_ Aguardando upload do historico_selic_over.csv para auditoria em tempo real...
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

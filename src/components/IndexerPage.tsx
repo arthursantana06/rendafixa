@@ -330,12 +330,7 @@ export function IndexerPage() {
             </p>
           </div>
 
-          <div className="bg-muted/15 p-2.5 border border-border/20 text-[10px] font-sans text-muted-foreground leading-relaxed">
-            <strong>Tática:</strong>{' '}
-            {mathData.finalWeights.cdi !== baseWeights.cdi
-              ? `Ajustada taticamente (${mathData.finalWeights.cdi > baseWeights.cdi ? '+' : ''}${(mathData.finalWeights.cdi - baseWeights.cdi).toFixed(1)}%) com base na sua fórmula de CDI (Nota: ${mathData.cdiRaw.toFixed(1)}).`
-              : 'Alocação em neutralidade estrutural.'}
-          </div>
+
         </div>
 
         {/* Box 2: IPCA+ */}
@@ -361,12 +356,7 @@ export function IndexerPage() {
             </p>
           </div>
 
-          <div className="bg-muted/15 p-2.5 border border-border/20 text-[10px] font-sans text-muted-foreground leading-relaxed">
-            <strong>Tática:</strong>{' '}
-            {mathData.finalWeights.ipca !== baseWeights.ipca
-              ? `Ajustada taticamente (${mathData.finalWeights.ipca > baseWeights.ipca ? '+' : ''}${(mathData.finalWeights.ipca - baseWeights.ipca).toFixed(1)}%) com base na sua fórmula de IPCA+ (Nota: ${mathData.ipcaRaw.toFixed(1)}).`
-              : 'Alocação em neutralidade estrutural.'}
-          </div>
+
         </div>
 
         {/* Box 3: Pré-fixado */}
@@ -377,9 +367,6 @@ export function IndexerPage() {
               <h3 className="font-serif text-sm text-foreground font-bold uppercase tracking-wider">
                 Caixa Pré-fixada
               </h3>
-              <span className="font-sans text-[9px] font-bold uppercase bg-[#c27a4d] text-white px-2 py-0.5">
-                Alpha Direcional
-              </span>
             </div>
             
             <div className="flex justify-between items-baseline mb-3">
@@ -392,16 +379,33 @@ export function IndexerPage() {
             </p>
           </div>
 
-          <div className="bg-muted/15 p-2.5 border border-border/20 text-[10px] font-sans text-muted-foreground leading-relaxed">
-            <strong>Tática:</strong>{' '}
-            {PROFILE_LIMITS[profile].pre.max === 0
-              ? 'TRAVADO EM 0% devido a restrições de segurança do perfil conservador.'
-              : mathData.finalWeights.pre !== baseWeights.pre
-              ? `Ajustada taticamente (${mathData.finalWeights.pre > baseWeights.pre ? '+' : ''}${(mathData.finalWeights.pre - baseWeights.pre).toFixed(1)}%) com base na sua fórmula de Pré-fixado (Nota: ${mathData.preRaw.toFixed(1)}).`
-              : 'Alocação em neutralidade estrutural.'}
-          </div>
+
         </div>
       </div>
+
+      {/* Allocation Sum Verification Alert */}
+      {(() => {
+        const sum = Math.round((mathData.finalWeights.cdi + mathData.finalWeights.ipca + mathData.finalWeights.pre) * 10) / 10;
+        const isOk = Math.abs(sum - 100) < 0.05;
+        return (
+          <div className={`p-3 border text-[11px] font-sans flex items-center justify-between shrink-0 ${
+            isOk 
+              ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-600 font-medium' 
+              : 'bg-amber-500/5 border-amber-500/20 text-amber-600 font-medium'
+          }`}>
+            <div className="flex items-center gap-2">
+              <span className="font-bold uppercase tracking-wider">Verificação de Alocação:</span>
+              <span>
+                {isOk 
+                  ? 'A soma das alocações dos indexadores é exatamente 100.0%.' 
+                  : `A soma das alocações atuais é de ${sum.toFixed(1)}%.`
+                }
+              </span>
+            </div>
+            <span className="font-mono font-bold text-xs">{sum.toFixed(1)}%</span>
+          </div>
+        );
+      })()}
 
       {/* LOWER GRID: Inputs & Calculations vs Active Indicators Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 min-h-0">
@@ -600,53 +604,7 @@ export function IndexerPage() {
             </div>
           </div>
 
-          {/* Card: Expectativa Própria */}
-          <div className="border border-border/60 bg-card p-6 shadow-xs animate-in fade-in-50 duration-300">
-            <h3 className="font-serif text-lg text-foreground border-b border-border/30 pb-2 mb-4 flex items-center gap-2">
-              <Sliders className="h-4.5 w-4.5 text-muted-foreground" />
-              Expectativa Própria de Juros
-            </h3>
-            
-            <p className="font-sans text-xs text-muted-foreground mb-4 leading-relaxed">
-              Insira sua própria projeção de taxa de juros para 2029 (Jan/2029). O spread tático será calculado comparando este valor com o contrato futuro de mercado.
-            </p>
 
-            <div className="space-y-4 pt-2">
-              <div className="flex justify-between items-center text-xs font-sans">
-                <span className="font-semibold text-foreground">Sua Taxa Estimada para 2029</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={expectativaPropriaStr}
-                    onChange={(e) => handleExpectationChange(e.target.value)}
-                    onBlur={() => setExpectativaPropriaStr(expectativaPropria.toFixed(2))}
-                    className="w-20 bg-background border border-border font-mono text-xs font-bold text-center py-1 text-foreground focus:outline-none"
-                  />
-                  <span className="mr-1">%</span>
-                  <button
-                    onClick={handleSaveExpectation}
-                    className={`px-2.5 py-1 text-[10px] font-sans font-bold uppercase tracking-wider border transition-all duration-200 cursor-pointer ${
-                      saveExpectationSuccess
-                        ? 'bg-green-600 border-green-600 text-white'
-                        : 'bg-foreground border-foreground text-background hover:bg-foreground/90'
-                    }`}
-                  >
-                    {saveExpectationSuccess ? 'Salvo!' : 'Salvar'}
-                  </button>
-                </div>
-              </div>
-              <input
-                type="range"
-                min="3.00"
-                max="18.00"
-                step="0.05"
-                value={expectativaPropria}
-                onChange={(e) => handleExpectationChange(Number(e.target.value))}
-                className="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer accent-foreground"
-              />
-            </div>
-          </div>
         </div>
 
         {/* Right Column: Active Indicators & Tactical Metrics (5 cols) */}
@@ -702,17 +660,7 @@ export function IndexerPage() {
                   </p>
                 </div>
                 
-                <div className="mt-4 pt-2 border-t border-border/10">
-                  {mathData.premioDeMercado > 0 ? (
-                    <span className="bg-green-500/10 text-green-700 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 border border-green-500/20">
-                      Prêmio Atraente
-                    </span>
-                  ) : (
-                    <span className="bg-muted text-muted-foreground text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 border border-border">
-                      Sem Prêmio
-                    </span>
-                  )}
-                </div>
+
               </div>
 
               {/* Metric 2: Meu Spread */}
@@ -729,17 +677,7 @@ export function IndexerPage() {
                   </p>
                 </div>
 
-                <div className="mt-4 pt-2 border-t border-border/10">
-                  {mathData.meuSpread > 0 ? (
-                    <span className="bg-green-500/10 text-green-700 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 border border-green-500/20">
-                      Expectativa Oportuna
-                    </span>
-                  ) : (
-                    <span className="bg-amber-500/10 text-amber-700 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 border border-amber-500/20 border-dashed">
-                      Expectativa Conservadora
-                    </span>
-                  )}
-                </div>
+
               </div>
             </div>
           </div>

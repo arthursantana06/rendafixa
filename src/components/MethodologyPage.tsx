@@ -295,14 +295,14 @@ function VisualIntervalBar({ direction, muitoBom, bom, moderado, unit }: VisualI
   const segments = isHigher 
     ? [
         { label: 'Ruim', color: 'bg-rose-500/20 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/30' },
-        { label: 'Moderado', color: 'bg-amber-500/20 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30' },
+        { label: 'Mod.', color: 'bg-amber-500/20 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30' },
         { label: 'Bom', color: 'bg-emerald-500/20 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30' },
-        { label: 'Muito Bom', color: 'bg-blue-500/20 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/30' }
+        { label: 'M. Bom', color: 'bg-blue-500/20 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/30' }
       ]
     : [
-        { label: 'Muito Bom', color: 'bg-blue-500/20 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/30' },
+        { label: 'M. Bom', color: 'bg-blue-500/20 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/30' },
         { label: 'Bom', color: 'bg-emerald-500/20 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30' },
-        { label: 'Moderado', color: 'bg-amber-500/20 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30' },
+        { label: 'Mod.', color: 'bg-amber-500/20 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30' },
         { label: 'Ruim', color: 'bg-rose-500/20 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/30' }
       ];
 
@@ -311,23 +311,23 @@ function VisualIntervalBar({ direction, muitoBom, bom, moderado, unit }: VisualI
     : [muitoBom, bom, moderado];
 
   return (
-    <div className="w-full flex flex-col pt-1 pb-4">
-      {/* The Bar */}
-      <div className="h-6 w-full flex rounded-sm overflow-hidden border border-border/30 relative">
+    <div className="w-full flex flex-col pt-0.5 pb-2">
+      {/* The Bar - Compacted */}
+      <div className="h-4.5 w-full flex rounded-sm overflow-hidden border border-border/30 relative">
         {segments.map((seg, i) => (
           <div 
             key={i} 
             className={`w-1/4 ${seg.color} flex items-center justify-center transition-all duration-300`}
           >
-            <span className="font-sans text-[8px] font-black uppercase tracking-widest text-center px-1">
+            <span className="font-sans text-[7.5px] font-black uppercase tracking-wider text-center px-0.5">
               {seg.label}
             </span>
           </div>
         ))}
       </div>
 
-      {/* The ticks & values */}
-      <div className="relative w-full h-8 mt-1.5">
+      {/* The ticks & values - Shrunk */}
+      <div className="relative w-full h-6 mt-1">
         {boundaries.map((val, idx) => {
           const percentage = 25 * (idx + 1);
           return (
@@ -337,9 +337,9 @@ function VisualIntervalBar({ direction, muitoBom, bom, moderado, unit }: VisualI
               className="absolute -translate-x-1/2 flex flex-col items-center"
             >
               {/* Tick mark */}
-              <div className="w-[1px] h-1.5 bg-foreground/30 dark:bg-foreground/50"></div>
+              <div className="w-[1px] h-1 bg-foreground/30 dark:bg-foreground/50"></div>
               {/* Value label */}
-              <span className="font-mono text-[9px] font-bold text-foreground mt-1 bg-background px-1.5 py-0.5 border border-border/30 rounded-sm shadow-xs select-none">
+              <span className="font-mono text-[8px] font-bold text-foreground mt-0.5 bg-background px-1 py-[1px] border border-border/30 rounded-xs shadow-2xs select-none">
                 {val !== undefined && val !== null && !isNaN(val) ? `${val}${unit}` : '—'}
               </span>
             </div>
@@ -370,6 +370,7 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
   const [colPlanilha, setColPlanilha] = useState('');
 
   const [isSaved, setIsSaved] = useState(false);
+  const [showMetadata, setShowMetadata] = useState(false); // Collapsed by default
 
   useEffect(() => {
     if (parameter) {
@@ -414,15 +415,15 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
     if (direction === 'higher_is_better') {
       return {
         muito_bom: `> ${mb}${unit}`,
-        bom: `Entre ${b}${unit} e ${mb}${unit}`,
-        moderado: `Entre ${mod}${unit} e ${b}${unit}`,
+        bom: `${b}${unit} a ${mb}${unit}`,
+        moderado: `${mod}${unit} a ${b}${unit}`,
         ruim: `< ${mod}${unit}`,
       };
     } else {
       return {
         muito_bom: `< ${mb}${unit}`,
-        bom: `Entre ${mb}${unit} e ${b}${unit}`,
-        moderado: `Entre ${b}${unit} e ${mod}${unit}`,
+        bom: `${mb}${unit} a ${b}${unit}`,
+        moderado: `${b}${unit} a ${mod}${unit}`,
         ruim: `> ${mod}${unit}`,
       };
     }
@@ -448,266 +449,271 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
     <article className="group border border-border/50 bg-background transition-all hover:border-border/80">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-5 hover:bg-muted/20 transition-colors text-left"
+        className="w-full flex items-center justify-between p-4 hover:bg-muted/10 transition-colors text-left"
       >
         <div className="flex items-baseline gap-4">
-          <h4 className="font-serif text-base font-bold text-foreground">
+          <h4 className="font-serif text-sm font-bold text-foreground">
             {label || indicator.label}
           </h4>
-          <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-muted-foreground hidden sm:inline-block">
+          <span className="font-sans text-[9px] font-bold uppercase tracking-widest text-muted-foreground hidden sm:inline-block">
             {newKey || indicator.shortLabel}
           </span>
         </div>
         {isOpen ? (
-          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         )}
       </button>
       
       {isOpen && (
-        <div className="px-5 pb-5 pt-3 border-t border-border/30 bg-muted/5">
-          <p className="font-sans text-[11px] text-foreground/75 leading-relaxed mb-4 max-w-3xl">
+        <div className="px-4 pb-4 pt-2 border-t border-border/30 bg-muted/5">
+          <p className="font-sans text-[10.5px] text-foreground/75 leading-relaxed mb-3 max-w-3xl">
             {description || indicator.description}
           </p>
 
-          <div className="mb-5 font-sans text-[9px] text-muted-foreground tracking-wide flex items-center gap-1.5 uppercase font-bold">
+          <div className="mb-4 font-sans text-[8.5px] text-muted-foreground tracking-wide flex items-center gap-1.5 uppercase font-bold">
             <span>Fonte BACEN:</span>
             <span className="font-serif italic normal-case font-normal">{source || indicator.source}</span>
             <span>—</span>
             <span className="normal-case font-normal">{indicator.sourceField}</span>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4 border-t border-border/20">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-3 border-t border-border/20">
             
             {/* Left Column: Form parameter editor using math symbols */}
-            <div className="lg:col-span-5 lg:border-r border-border/20 lg:pr-8 flex flex-col gap-4">
-              <h5 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground">
-                Configuração do Indicador
-              </h5>
+            <div className="lg:col-span-5 lg:border-r border-border/20 lg:pr-6 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h5 className="font-sans text-[9px] font-black uppercase tracking-widest text-foreground">
+                  Parâmetros de Score
+                </h5>
+                <button
+                  type="button"
+                  onClick={() => setShowMetadata(!showMetadata)}
+                  className="font-sans text-[8px] font-black uppercase tracking-wider text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                >
+                  {showMetadata ? '[Ocultar Metadados]' : '[Editar Metadados]'}
+                </button>
+              </div>
               
               {!parameter ? (
                 <div className="font-sans text-xs italic text-muted-foreground py-2 animate-pulse">
                   Carregando parâmetros...
                 </div>
               ) : (
-                <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
+                <form onSubmit={handleFormSubmit} className="flex flex-col gap-3">
+                  {/* Metadata Input Fields (Collapsed by default) */}
+                  {showMetadata && (
+                    <div className="flex flex-col gap-2.5 font-sans text-xs border-b border-border/20 pb-3 mb-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <div className="flex flex-col gap-0.5">
+                        <label className="font-sans text-[7.5px] font-black uppercase tracking-wider text-muted-foreground">
+                          Nome do Indicador
+                        </label>
+                        <input
+                          type="text"
+                          value={label}
+                          onChange={(e) => setLabel(e.target.value)}
+                          className="bg-transparent border border-border/50 font-sans text-xs px-2.5 py-1.5 focus:outline-none focus:border-foreground"
+                        />
+                      </div>
+                      
+                      <div className="flex flex-col gap-0.5">
+                        <label className="font-sans text-[7.5px] font-black uppercase tracking-wider text-muted-foreground">
+                          Código / Coluna IF.data
+                        </label>
+                        <input
+                          type="text"
+                          value={colPlanilha}
+                          onChange={(e) => setColPlanilha(e.target.value)}
+                          placeholder={indicator.key}
+                          className="bg-transparent border border-border/50 font-sans text-xs px-2.5 py-1.5 focus:outline-none focus:border-foreground font-mono"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-0.5">
+                        <label className="font-sans text-[7.5px] font-black uppercase tracking-wider text-muted-foreground">
+                          Fonte do Dado
+                        </label>
+                        <input
+                          type="text"
+                          value={source}
+                          onChange={(e) => setSource(e.target.value)}
+                          className="bg-transparent border border-border/50 font-sans text-xs px-2.5 py-1.5 focus:outline-none focus:border-foreground"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-0.5">
+                        <label className="font-sans text-[7.5px] font-black uppercase tracking-wider text-muted-foreground">
+                          Descrição
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          className="bg-transparent border border-border/50 font-sans text-xs px-2.5 py-1.5 focus:outline-none focus:border-foreground resize-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Direction Badge */}
-                  <div className="flex items-center justify-between font-sans text-[9px] uppercase tracking-wider text-muted-foreground bg-muted/40 p-2 border border-border/30 rounded-sm mb-2">
-                    <span className="font-bold">Direção da Nota:</span>
+                  <div className="flex items-center justify-between font-sans text-[8px] uppercase tracking-widest text-muted-foreground bg-muted/40 px-2 py-1.5 border border-border/30 rounded-xs">
+                    <span className="font-bold">Direção:</span>
                     <span className="font-black text-foreground">
                       {parameter.direction === 'higher_is_better' ? 'Maior é Melhor (↑)' : 'Menor é Melhor (↓)'}
                     </span>
                   </div>
 
-                  {/* Metadata Input Fields */}
-                  <div className="flex flex-col gap-3.5 font-sans text-xs border-b border-border/20 pb-4 mb-2">
-                    <div className="flex flex-col gap-1">
-                      <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                        Nome do Indicador
-                      </label>
-                      <input
-                        type="text"
-                        value={label}
-                        onChange={(e) => setLabel(e.target.value)}
-                        className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground"
-                      />
-                    </div>
-                    
-                    <div className="flex flex-col gap-1">
-                      <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                        Código/Coluna na Planilha
-                      </label>
-                      <input
-                        type="text"
-                        value={colPlanilha}
-                        onChange={(e) => setColPlanilha(e.target.value)}
-                        placeholder={indicator.key}
-                        className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground font-mono"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                        Fonte do Dado
-                      </label>
-                      <input
-                        type="text"
-                        value={source}
-                        onChange={(e) => setSource(e.target.value)}
-                        className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <label className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground">
-                        Descrição Detalhada
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        className="bg-transparent border border-border/60 font-sans text-xs px-3 py-2 focus:outline-none focus:border-foreground resize-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Math Formula Blocks */}
+                  {/* Math Formula Blocks - Tightened */}
                   {parameter.direction === 'higher_is_better' ? (
-                    <div className="flex flex-col gap-3 font-sans text-xs">
+                    <div className="flex flex-col gap-1.5 font-sans text-[11px]">
                       {/* Muito Bom Row */}
-                      <div className="flex items-center justify-between bg-blue-500/5 border border-blue-500/10 p-2.5 rounded-sm">
-                        <span className="w-20 font-sans text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
-                          Muito Bom
+                      <div className="flex items-center justify-between bg-blue-500/5 border border-blue-500/10 px-2 py-1.5 rounded-sm">
+                        <span className="font-sans text-[8px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                          M. Bom
                         </span>
-                        <div className="flex items-center gap-2 flex-1 justify-end">
+                        <div className="flex items-center gap-1.5 flex-1 justify-end">
                           <span className="text-foreground font-mono font-bold">x ≥</span>
                           <input 
                             type="number"
                             step="0.01"
                             value={muitoBom}
                             onChange={(e) => setMuitoBom(e.target.value)}
-                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
-                            title="Limite Muito Bom"
+                            className="w-16 bg-background border border-border/60 rounded px-1.5 py-0.5 font-mono text-[11px] focus:outline-none focus:border-foreground text-right"
                           />
-                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                          <span className="text-muted-foreground font-mono text-[9px] w-3">{indicator.unit}</span>
                         </div>
                       </div>
 
                       {/* Bom Row */}
-                      <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/10 p-2.5 rounded-sm">
-                        <span className="w-20 font-sans text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                      <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/10 px-2 py-1.5 rounded-sm">
+                        <span className="font-sans text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
                           Bom
                         </span>
-                        <div className="flex items-center gap-2 flex-1 justify-end">
+                        <div className="flex items-center gap-1.5 flex-1 justify-end">
                           <input 
                             type="number"
                             step="0.01"
                             value={bom}
                             onChange={(e) => setBom(e.target.value)}
-                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
-                            title="Limite Bom"
+                            className="w-16 bg-background border border-border/60 rounded px-1.5 py-0.5 font-mono text-[11px] focus:outline-none focus:border-foreground text-right"
                           />
-                          <span className="text-foreground font-mono font-bold">≤ x &lt;</span>
-                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                          <span className="text-foreground font-mono font-bold text-[10px]">≤ x &lt;</span>
+                          <span className="font-mono bg-muted/30 px-1.5 py-0.5 rounded text-foreground min-w-[40px] text-center border border-border/40 text-[10px]">
                             {muitoBom !== '' ? muitoBom : '—'}
                           </span>
-                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                          <span className="text-muted-foreground font-mono text-[9px] w-3">{indicator.unit}</span>
                         </div>
                       </div>
 
                       {/* Moderado Row */}
-                      <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-sm">
-                        <span className="w-20 font-sans text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
-                          Moderado
+                      <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/10 px-2 py-1.5 rounded-sm">
+                        <span className="font-sans text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                          Mod.
                         </span>
-                        <div className="flex items-center gap-2 flex-1 justify-end">
+                        <div className="flex items-center gap-1.5 flex-1 justify-end">
                           <input 
                             type="number"
                             step="0.01"
                             value={moderado}
                             onChange={(e) => setModerado(e.target.value)}
-                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
-                            title="Limite Moderado"
+                            className="w-16 bg-background border border-border/60 rounded px-1.5 py-0.5 font-mono text-[11px] focus:outline-none focus:border-foreground text-right"
                           />
-                          <span className="text-foreground font-mono font-bold">≤ x &lt;</span>
-                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                          <span className="text-foreground font-mono font-bold text-[10px]">≤ x &lt;</span>
+                          <span className="font-mono bg-muted/30 px-1.5 py-0.5 rounded text-foreground min-w-[40px] text-center border border-border/40 text-[10px]">
                             {bom !== '' ? bom : '—'}
                           </span>
-                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                          <span className="text-muted-foreground font-mono text-[9px] w-3">{indicator.unit}</span>
                         </div>
                       </div>
 
                       {/* Ruim Row */}
-                      <div className="flex items-center justify-between bg-rose-500/5 border border-rose-500/10 p-2.5 rounded-sm">
-                        <span className="w-20 font-sans text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">
+                      <div className="flex items-center justify-between bg-rose-500/5 border border-rose-500/10 px-2 py-1.5 rounded-sm">
+                        <span className="font-sans text-[8px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">
                           Ruim
                         </span>
-                        <div className="flex items-center gap-2 flex-1 justify-end">
+                        <div className="flex items-center gap-1.5 flex-1 justify-end">
                           <span className="text-foreground font-mono font-bold">x &lt;</span>
-                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                          <span className="font-mono bg-muted/30 px-1.5 py-0.5 rounded text-foreground min-w-[40px] text-center border border-border/40 text-[10px]">
                             {moderado !== '' ? moderado : '—'}
                           </span>
-                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                          <span className="text-muted-foreground font-mono text-[9px] w-3">{indicator.unit}</span>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-3 font-sans text-xs">
+                    <div className="flex flex-col gap-1.5 font-sans text-[11px]">
                       {/* Muito Bom Row */}
-                      <div className="flex items-center justify-between bg-blue-500/5 border border-blue-500/10 p-2.5 rounded-sm">
-                        <span className="w-20 font-sans text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
-                          Muito Bom
+                      <div className="flex items-center justify-between bg-blue-500/5 border border-blue-500/10 px-2 py-1.5 rounded-sm">
+                        <span className="font-sans text-[8px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                          M. Bom
                         </span>
-                        <div className="flex items-center gap-2 flex-1 justify-end">
+                        <div className="flex items-center gap-1.5 flex-1 justify-end">
                           <span className="text-foreground font-mono font-bold">x ≤</span>
                           <input 
                             type="number"
                             step="0.01"
                             value={muitoBom}
                             onChange={(e) => setMuitoBom(e.target.value)}
-                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
-                            title="Limite Muito Bom"
+                            className="w-16 bg-background border border-border/60 rounded px-1.5 py-0.5 font-mono text-[11px] focus:outline-none focus:border-foreground text-right"
                           />
-                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                          <span className="text-muted-foreground font-mono text-[9px] w-3">{indicator.unit}</span>
                         </div>
                       </div>
 
                       {/* Bom Row */}
-                      <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/10 p-2.5 rounded-sm">
-                        <span className="w-20 font-sans text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                      <div className="flex items-center justify-between bg-emerald-500/5 border border-emerald-500/10 px-2 py-1.5 rounded-sm">
+                        <span className="font-sans text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
                           Bom
                         </span>
-                        <div className="flex items-center gap-2 flex-1 justify-end">
-                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                        <div className="flex items-center gap-1.5 flex-1 justify-end">
+                          <span className="font-mono bg-muted/30 px-1.5 py-0.5 rounded text-foreground min-w-[40px] text-center border border-border/40 text-[10px]">
                             {muitoBom !== '' ? muitoBom : '—'}
                           </span>
-                          <span className="text-foreground font-mono font-bold">&lt; x ≤</span>
+                          <span className="text-foreground font-mono font-bold text-[10px]">&lt; x ≤</span>
                           <input 
                             type="number"
                             step="0.01"
                             value={bom}
                             onChange={(e) => setBom(e.target.value)}
-                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
-                            title="Limite Bom"
+                            className="w-16 bg-background border border-border/60 rounded px-1.5 py-0.5 font-mono text-[11px] focus:outline-none focus:border-foreground text-right"
                           />
-                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                          <span className="text-muted-foreground font-mono text-[9px] w-3">{indicator.unit}</span>
                         </div>
                       </div>
 
                       {/* Moderado Row */}
-                      <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/10 p-2.5 rounded-sm">
-                        <span className="w-20 font-sans text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
-                          Moderado
+                      <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/10 px-2 py-1.5 rounded-sm">
+                        <span className="font-sans text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">
+                          Mod.
                         </span>
-                        <div className="flex items-center gap-2 flex-1 justify-end">
-                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                        <div className="flex items-center gap-1.5 flex-1 justify-end">
+                          <span className="font-mono bg-muted/30 px-1.5 py-0.5 rounded text-foreground min-w-[40px] text-center border border-border/40 text-[10px]">
                             {bom !== '' ? bom : '—'}
                           </span>
-                          <span className="text-foreground font-mono font-bold">&lt; x ≤</span>
+                          <span className="text-foreground font-mono font-bold text-[10px]">&lt; x ≤</span>
                           <input 
                             type="number"
                             step="0.01"
                             value={moderado}
                             onChange={(e) => setModerado(e.target.value)}
-                            className="w-20 bg-background border border-border/80 rounded px-2 py-1 font-mono text-xs focus:outline-none focus:border-foreground text-right"
-                            title="Limite Moderado"
+                            className="w-16 bg-background border border-border/60 rounded px-1.5 py-0.5 font-mono text-[11px] focus:outline-none focus:border-foreground text-right"
                           />
-                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                          <span className="text-muted-foreground font-mono text-[9px] w-3">{indicator.unit}</span>
                         </div>
                       </div>
 
                       {/* Ruim Row */}
-                      <div className="flex items-center justify-between bg-rose-500/5 border border-rose-500/10 p-2.5 rounded-sm">
-                        <span className="w-20 font-sans text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">
+                      <div className="flex items-center justify-between bg-rose-500/5 border border-rose-500/10 px-2 py-1.5 rounded-sm">
+                        <span className="font-sans text-[8px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">
                           Ruim
                         </span>
-                        <div className="flex items-center gap-2 flex-1 justify-end">
+                        <div className="flex items-center gap-1.5 flex-1 justify-end">
                           <span className="text-foreground font-mono font-bold">x &gt;</span>
-                          <span className="font-mono bg-muted/40 px-2 py-1 rounded text-foreground min-w-[50px] text-center border border-border/40 text-xs">
+                          <span className="font-mono bg-muted/30 px-1.5 py-0.5 rounded text-foreground min-w-[40px] text-center border border-border/40 text-[10px]">
                             {moderado !== '' ? moderado : '—'}
                           </span>
-                          <span className="text-muted-foreground font-mono w-4">{indicator.unit}</span>
+                          <span className="text-muted-foreground font-mono text-[9px] w-3">{indicator.unit}</span>
                         </div>
                       </div>
                     </div>
@@ -729,8 +735,8 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
 
                     if (hasConflict) {
                       return (
-                        <div className="font-sans text-[10px] font-bold uppercase tracking-wide text-rose-600 bg-rose-500/5 p-3 border border-rose-500/20 rounded-sm leading-relaxed">
-                          ⚠️ Atenção: Os limites violam a consistência lógica ({isHigherDir ? 'Muito Bom > Bom > Moderado' : 'Muito Bom < Bom < Moderado'}).
+                        <div className="font-sans text-[9px] font-bold uppercase tracking-wide text-rose-600 bg-rose-500/5 p-2 border border-rose-500/20 rounded-sm leading-normal">
+                          ⚠️ Inconsistência de limites ({isHigherDir ? 'M.Bom > Bom > Mod' : 'M.Bom < Bom < Mod'}).
                         </div>
                       );
                     }
@@ -739,22 +745,22 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
 
                   <button
                     type="submit"
-                    className={`font-sans text-[10px] font-bold uppercase tracking-widest py-3 px-4 border transition-all text-center cursor-pointer ${
+                    className={`font-sans text-[9px] font-black uppercase tracking-widest py-2.5 px-3 border transition-all text-center cursor-pointer ${
                       isSaved 
                         ? 'bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-600' 
                         : 'bg-foreground border-foreground text-background hover:bg-foreground/90'
                     }`}
                   >
-                    {isSaved ? 'Parâmetros Salvos!' : 'Salvar Parâmetros'}
+                    {isSaved ? 'Salvo!' : 'Salvar Limites'}
                   </button>
                 </form>
               )}
             </div>
 
             {/* Right Column: Live Range Visualizer and textual summary */}
-            <div className="lg:col-span-7 flex flex-col gap-6">
+            <div className="lg:col-span-7 flex flex-col gap-4">
               <div>
-                <h5 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground mb-3">
+                <h5 className="font-sans text-[9px] font-black uppercase tracking-widest text-foreground mb-2">
                   Visualização dos Intervalos
                 </h5>
                 <VisualIntervalBar 
@@ -767,11 +773,11 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
               </div>
 
               <div>
-                <h5 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground mb-3">
-                  Resumo das Regras de Enquadramento
+                <h5 className="font-sans text-[9px] font-black uppercase tracking-widest text-foreground mb-2">
+                  Resumo das Regras
                 </h5>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3 bg-muted/20 p-4 border border-border/40 rounded-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 bg-muted/15 p-2.5 border border-border/30 rounded-sm text-[9.5px]">
                   {qualityLevels.map(({ key, label }) => {
                     let previewText = indicator.criteria?.[key] || '';
                     if (parameter) {
@@ -780,20 +786,20 @@ function IndicatorEditorialBlock({ indicator, parameter, onUpdate }: IndicatorEd
                       const modNum = Number(moderado) || 0;
                       const rules = getRulePreview(parameter.direction, mbNum, bNum, modNum, indicator.unit);
                       
-                      if (key === 'muito_bom') previewText = `Valores classificados com nota máxima: ${rules.muito_bom}.`;
-                      else if (key === 'bom') previewText = `Valores considerados confortáveis: ${rules.bom}.`;
-                      else if (key === 'moderado') previewText = `Valores no limite de adequação: ${rules.moderado}.`;
-                      else if (key === 'ruim') previewText = `Valores de risco crítico: ${rules.ruim}.`;
+                      if (key === 'muito_bom') previewText = `Nota máxima: ${rules.muito_bom}`;
+                      else if (key === 'bom') previewText = `Confortável: ${rules.bom}`;
+                      else if (key === 'moderado') previewText = `Limite: ${rules.moderado}`;
+                      else if (key === 'ruim') previewText = `Risco crítico: ${rules.ruim}`;
                     }
 
                     return (
-                      <div key={key} className="flex flex-col items-start gap-1">
-                        <span className={`font-sans text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm ${colorMap[key]}`}>
+                      <div key={key} className="flex items-center gap-1.5">
+                        <span className={`font-sans text-[7.5px] font-black uppercase tracking-widest px-1 py-0.5 rounded-xs shrink-0 w-16 text-center ${colorMap[key]}`}>
                           {label}
                         </span>
-                        <p className="font-sans text-[10px] text-foreground/75 leading-relaxed">
+                        <span className="font-mono text-foreground/80 truncate" title={previewText}>
                           {previewText}
-                        </p>
+                        </span>
                       </div>
                     );
                   })}
