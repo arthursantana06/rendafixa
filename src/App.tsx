@@ -14,6 +14,7 @@ import { IndexerDataPage } from '@/components/IndexerDataPage';
 import { BankDetailsModal } from '@/components/BankDetailsModal';
 import { PainelPage } from '@/components/PainelPage';
 import { RendaVariavelPage } from '@/components/RendaVariavelPage';
+import { PerfisInvestidorPage } from '@/components/PerfisInvestidorPage';
 import { analyzeAllBanks } from '@/lib/analysis';
 import { INDICATORS, getDefaultWeights, getDefaultKnockouts } from '@/lib/indicators';
 import { supabase } from '@/lib/supabase';
@@ -385,6 +386,10 @@ function App() {
 
           {activeModule === 'renda_variavel' && (
             <RendaVariavelPage />
+          )}
+
+          {activeModule === 'perfis_investidor' && (
+            <PerfisInvestidorPage />
           )}
 
           {activeModule === 'renda_fixa' && activeMainTab === 'emissor' && activeSubTab === 'analise' && (

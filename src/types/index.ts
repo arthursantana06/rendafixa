@@ -108,7 +108,7 @@ export interface SortConfig {
 
 export type MainTab = 'emissor' | 'indexador' | 'titulos' | 'carteiras' | 'mercado';
 export type SubTab = 'analise' | 'metodologia' | 'extracao' | 'score';
-export type AppModule = 'painel' | 'renda_fixa' | 'renda_variavel';
+export type AppModule = 'painel' | 'renda_fixa' | 'renda_variavel' | 'perfis_investidor';
 
 export interface FormulaDimensao {
   dimension_key: string;

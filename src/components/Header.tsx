@@ -61,6 +61,8 @@ export function Header({
         return 'Módulo de Renda Fixa';
       case 'renda_variavel':
         return 'Módulo de Renda Variável';
+      case 'perfis_investidor':
+        return 'Perfis de Investidor';
       default:
         return '';
     }
@@ -89,12 +91,6 @@ export function Header({
 
             {isDropdownOpen && (
               <div className="absolute left-0 top-[100%] mt-2 w-64 bg-card border border-border shadow-md z-50 py-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="px-4 py-1.5 border-b border-border/20 mb-1">
-                  <span className="font-sans text-[9px] font-black uppercase tracking-widest text-muted-foreground/75 block">
-                    Navegação do Sistema
-                  </span>
-                </div>
-                
                 <button
                   onClick={() => {
                     onModuleChange('painel');
@@ -132,6 +128,19 @@ export function Header({
                 >
                   <span>Módulo de Renda Variável</span>
                   {activeModule === 'renda_variavel' && <Check className="h-3.5 w-3.5 text-foreground" />}
+                </button>
+
+                <button
+                  onClick={() => {
+                    onModuleChange('perfis_investidor');
+                    setIsDropdownOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-4 py-2.5 text-left font-sans text-[10px] font-bold uppercase tracking-wider transition-colors hover:bg-muted/10 cursor-pointer ${
+                    activeModule === 'perfis_investidor' ? 'text-foreground bg-muted/5' : 'text-muted-foreground'
+                  }`}
+                >
+                  <span>Perfis de Investidor</span>
+                  {activeModule === 'perfis_investidor' && <Check className="h-3.5 w-3.5 text-foreground" />}
                 </button>
               </div>
             )}
