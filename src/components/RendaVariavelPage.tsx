@@ -5,14 +5,14 @@ export function RendaVariavelPage() {
     <div className="px-8 py-6 space-y-8 animate-in fade-in duration-300">
       {/* Editorial Title Block */}
       <div className="border-b border-border/30 pb-6">
-        <span className="font-sans text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+        <span className="font-sans text-[10px] font-black uppercase tracking-widest text-muted-foreground block mb-1">
           HFC Consultoria / Mercado de Capitais
         </span>
-        <h1 className="font-serif text-3xl md:text-4xl text-foreground mt-1 mb-2 font-medium">
+        <h2 className="font-serif text-3xl font-bold tracking-tight text-foreground leading-tight mb-2">
           Módulo de Renda Variável
-        </h1>
-        <p className="font-sans text-xs text-muted-foreground uppercase tracking-wider">
-          Análise de Risco, Alocação Dinâmica & Carteiras de Ações e FIIs
+        </h2>
+        <p className="font-serif text-xs italic text-muted-foreground leading-relaxed">
+          Análise de Risco, Alocação Dinâmica & Carteiras de Ações e FIIs.
         </p>
       </div>
 

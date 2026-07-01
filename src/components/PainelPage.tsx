@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Newspaper, TrendingUp, Award, Calendar, Settings, X, Plus, Edit2, Check } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import type { BankAnalysis } from '@/types';
 
 interface PainelPageProps {
@@ -109,7 +110,36 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
   const [editingWord, setEditingWord] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
 
-  const [jurosHorizon, setJurosHorizon] = useState<"2026" | "2027" | "2029">("2029");
+  const [selicHistory, setSelicHistory] = useState<any[]>([]);
+  const [expectativaPropria, setExpectativaPropria] = useState(10.00);
+
+  useEffect(() => {
+    // 1. Fetch expectation
+    const saved = localStorage.getItem('hfc_expectativa_propria');
+    if (saved) setExpectativaPropria(Number(saved));
+
+    // 2. Fetch Selic history
+    async function fetchSelic() {
+      try {
+        const { data, error } = await supabase
+          .from('historico_selic_real')
+          .select('date, rate')
+          .order('date', { ascending: false })
+          .limit(300);
+        
+        if (!error && data) {
+          const formatted = data.map((row: any) => ({
+            date: row.date,
+            rate: Number(row.rate) * 100
+          })).reverse();
+          setSelicHistory(formatted);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    fetchSelic();
+  }, []);
 
   // Get Top 5 eligible banks based on actual calculations
   const topBanks = useMemo(() => {
@@ -119,14 +149,63 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
       .slice(0, 5);
   }, [analyses]);
 
-  // Juros projections depending on horizon
-  const jurosProjections = {
-    "2026": { atual: 10.50, Focus: 9.75, Futuro: 10.15, text: "Curva com inclinação negativa, projetando cortes residuais se inflação convergir." },
-    "2027": { atual: 10.50, Focus: 9.00, Futuro: 10.60, text: "Divergência de 160 bps sinaliza prêmio de risco por incertezas fiscais." },
-    "2029": { atual: 10.50, Focus: 9.00, Futuro: 11.25, text: "Curva longa inclinada (+225 bps vs Focus), precificando prêmio de inflação." }
-  };
+  // Simplified SVG Chart Calculation
+  const chartPoints = useMemo(() => {
+    if (selicHistory.length === 0) return [];
+    const maxPoints = 80;
+    if (selicHistory.length <= maxPoints) return selicHistory;
+    const step = Math.floor(selicHistory.length / maxPoints);
+    const result = [];
+    for (let i = 0; i < selicHistory.length; i += step) {
+      result.push(selicHistory[i]);
+    }
+    return result;
+  }, [selicHistory]);
 
-  const currentJuros = jurosProjections[jurosHorizon];
+  const chartData = useMemo(() => {
+    if (chartPoints.length === 0) return null;
+    
+    const rates = chartPoints.map(p => p.rate);
+    const minVal = Math.min(...rates);
+    const maxVal = Math.max(...rates);
+    
+    const yMin = Math.max(0, minVal - 0.5);
+    const yMax = maxVal + 0.5;
+    
+    const width = 340;
+    const height = 150;
+    const paddingX = 35;
+    const paddingTop = 10;
+    const paddingBottom = 20;
+    
+    const chartWidth = width - paddingX - 10;
+    const chartHeight = height - paddingTop - paddingBottom;
+    
+    const dLine = chartPoints.reduce((path, p, idx) => {
+      const x = paddingX + (idx / (chartPoints.length - 1)) * chartWidth;
+      const y = paddingTop + (1 - (p.rate - yMin) / (yMax - yMin)) * chartHeight;
+      return path + `${idx === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)} `;
+    }, '');
+    
+    const dArea = dLine ? dLine + `L ${(paddingX + chartWidth).toFixed(2)} ${(height - paddingBottom).toFixed(2)} L ${paddingX.toFixed(2)} ${(height - paddingBottom).toFixed(2)} Z` : '';
+    
+    const yTicks = [yMin, (yMin + yMax) / 2, yMax];
+    
+    return {
+      dLine,
+      dArea,
+      yTicks,
+      yMin,
+      yMax,
+      width,
+      height,
+      paddingX,
+      paddingTop,
+      paddingBottom,
+      chartWidth,
+      chartHeight
+    };
+  }, [chartPoints]);
 
   // News manager functions
   const handleAddWord = () => {
@@ -214,19 +293,22 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
   };
 
   return (
-    <div className="px-6 py-4 space-y-6 animate-in fade-in duration-200">
-      {/* Editorial Title Block - Compact */}
-      <div className="border-b border-border/20 pb-3 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+    <div className="px-8 py-6 space-y-8 animate-in fade-in duration-200">
+      {/* Editorial Title Block */}
+      <div className="border-b border-border/30 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <span className="font-sans text-[8px] font-black uppercase tracking-widest text-muted-foreground block">
-            HFC Consultoria
+          <span className="font-sans text-[10px] font-black uppercase tracking-widest text-muted-foreground block mb-1">
+            HFC Consultoria / Cockpit Geral
           </span>
-          <h1 className="font-serif text-xl text-foreground mt-0.5 font-medium tracking-tight">
-            Cockpit Geral de Investimentos
-          </h1>
+          <h2 className="font-serif text-3xl font-bold tracking-tight text-foreground leading-tight mb-2">
+            Painel de Controle
+          </h2>
+          <p className="font-serif text-xs italic text-muted-foreground leading-relaxed">
+            Cockpit consolidado com visão de notícias, classificação de emissores e taxas de mercado.
+          </p>
         </div>
         <div className="flex items-center gap-1.5 text-muted-foreground text-[9px] font-sans font-bold uppercase tracking-wider">
-          <Calendar className="h-3 w-3 opacity-60" />
+          <Calendar className="h-3.5 w-3.5 opacity-60" />
           <span>Atualizado: {new Date().toLocaleDateString('pt-BR')}</span>
         </div>
       </div>
@@ -451,7 +533,7 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
           </div>
         </div>
 
-        {/* Card 3: Juros Atual x Expectativa */}
+        {/* Card 3: Expectativa de Juros */}
         <div className="border border-border p-4 bg-card flex flex-col h-[400px]">
           <div className="flex items-center gap-1.5 mb-3 border-b border-border/20 pb-2 shrink-0">
             <TrendingUp className="h-3.5 w-3.5 text-foreground/80" />
@@ -460,98 +542,96 @@ export function PainelPage({ analyses, isLoading }: PainelPageProps) {
             </h2>
           </div>
 
-          {/* Horizon Toggle */}
-          <div className="flex border-b border-border/30 mb-4 shrink-0">
-            {(["2026", "2027", "2029"] as const).map((hor) => (
-              <button
-                key={hor}
-                onClick={() => setJurosHorizon(hor)}
-                className={`flex-1 font-sans text-[9px] font-bold uppercase tracking-wider py-1.5 text-center border-b-2 transition-all cursor-pointer ${
-                  jurosHorizon === hor
-                    ? 'border-foreground text-foreground font-black'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Vcto {hor}
-              </button>
-            ))}
-          </div>
-
-          {/* Core Metrics comparison */}
-          <div className="grid grid-cols-3 gap-2 mb-4 shrink-0">
-            <div className="border border-border/40 p-2 bg-muted/5 text-center">
-              <span className="font-sans text-[7px] font-black uppercase tracking-widest text-muted-foreground block mb-0.5">
-                Selic Meta
+          {/* Banner da Expectativa Própria */}
+          <div className="border border-border/40 p-3 bg-muted/5 flex items-center justify-between shrink-0 mb-4 rounded-none">
+            <div>
+              <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground block mb-0.5">
+                Expectativa de Juros HFC (E_propria)
               </span>
-              <span className="font-serif text-base font-bold text-foreground">
-                {currentJuros.atual.toFixed(2)}%
+              <span className="font-sans text-[10px] text-muted-foreground">
+                Projeção de Juros Jan/2029
               </span>
             </div>
-            
-            <div className="border border-border/40 p-2 bg-muted/5 text-center">
-              <span className="font-sans text-[7px] font-black uppercase tracking-widest text-muted-foreground block mb-0.5">
-                Exp. Focus
-              </span>
-              <span className="font-serif text-base font-bold text-foreground">
-                {currentJuros.Focus.toFixed(2)}%
-              </span>
-            </div>
-
-            <div className="border border-border/40 p-2 bg-muted/5 text-center">
-              <span className="font-sans text-[7px] font-black uppercase tracking-widest text-muted-foreground block mb-0.5">
-                DI Futuro
-              </span>
-              <span className="font-serif text-base font-bold text-foreground flex items-center justify-center gap-0.5">
-                {currentJuros.Futuro.toFixed(2)}%
+            <div className="text-right">
+              <span className="font-mono text-2xl font-black text-foreground">
+                {expectativaPropria.toFixed(2)}%
               </span>
             </div>
           </div>
 
-          {/* Visual Indicator (Comparison Bar) */}
-          <div className="flex-1 space-y-4">
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-[9px] font-sans font-bold uppercase tracking-wide">
-                <span className="text-muted-foreground">Projeção Relativa</span>
-                <span className="text-foreground font-black">Prêmio: +{(currentJuros.Futuro - currentJuros.Focus).toFixed(2)}%</span>
-              </div>
-              <div className="h-4 bg-muted/40 border border-border/40 relative">
-                {/* Current rate line marker */}
-                <div 
-                  className="absolute top-0 bottom-0 w-[2px] bg-muted-foreground/60 z-10" 
-                  style={{ left: `${(currentJuros.atual / 14) * 100}%` }}
-                  title={`Selic Meta: ${currentJuros.atual}%`}
-                />
-                
-                {/* Focus projection bar */}
-                <div 
-                  className="absolute top-[2px] bottom-[2px] left-0 bg-muted-foreground/20" 
-                  style={{ width: `${(currentJuros.Focus / 14) * 100}%` }}
-                />
+          {/* Grafico Selic Historica Simplificado */}
+          <div className="flex-1 min-h-0 flex flex-col justify-end">
+            <span className="font-sans text-[8px] font-black uppercase tracking-wider text-muted-foreground mb-1.5 block">
+              Gráfico de Selic Real Histórica (Referência)
+            </span>
+            <div className="relative w-full h-[160px] bg-background/5 border border-border/30 overflow-visible select-none">
+              {chartData ? (
+                <svg viewBox="0 0 340 150" className="w-full h-full overflow-visible">
+                  <defs>
+                    <linearGradient id="painelChartGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--color-foreground)" stopOpacity="0.08" />
+                      <stop offset="100%" stopColor="var(--color-foreground)" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Grid lines */}
+                  {chartData.yTicks.map((tick, i) => {
+                    const y = chartData.paddingTop + (1 - (tick - chartData.yMin) / (chartData.yMax - chartData.yMin)) * chartData.chartHeight;
+                    return (
+                      <g key={i} className="opacity-50">
+                        <line
+                          x1={chartData.paddingX}
+                          y1={y}
+                          x2={340 - 10}
+                          y2={y}
+                          stroke="currentColor"
+                          className="text-border"
+                          strokeWidth="0.5"
+                          strokeDasharray="3 3"
+                        />
+                        <text
+                          x={chartData.paddingX - 6}
+                          y={y + 3}
+                          textAnchor="end"
+                          className="font-mono text-[8px] fill-muted-foreground font-semibold"
+                        >
+                          {tick.toFixed(1)}%
+                        </text>
+                      </g>
+                    );
+                  })}
 
-                {/* Futuro projection bar */}
-                <div 
-                  className="absolute top-[6px] bottom-[6px] left-0 bg-foreground/60" 
-                  style={{ width: `${(currentJuros.Futuro / 14) * 100}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[7px] font-sans text-muted-foreground tracking-wider uppercase font-bold">
-                <span>0.0%</span>
-                <span>Selic (10.5%)</span>
-                <span>Max (14.0%)</span>
-              </div>
+                  {/* Area fill */}
+                  {chartData.dArea && (
+                    <path d={chartData.dArea} fill="url(#painelChartGradient)" />
+                  )}
+
+                  {/* Line path */}
+                  {chartData.dLine && (
+                    <path
+                      d={chartData.dLine}
+                      fill="none"
+                      stroke="currentColor"
+                      className="text-foreground"
+                      strokeWidth="1.25"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+                </svg>
+              ) : (
+                <div className="flex items-center justify-center h-full text-[10px] text-muted-foreground font-sans">
+                  Carregando dados históricos...
+                </div>
+              )}
             </div>
-
-            <p className="font-sans text-[10px] text-muted-foreground leading-relaxed italic border-l border-border/60 pl-2 line-clamp-3">
-              {currentJuros.text}
-            </p>
           </div>
 
           {/* Footer of Card 3 */}
           <div className="mt-3 pt-2 border-t border-border/20 shrink-0 text-[8px] font-sans text-muted-foreground uppercase tracking-widest flex items-center justify-between font-bold">
-            <span>Fontes: BC & B3</span>
+            <span>Fontes: Banco Central do Brasil</span>
             <div className="flex items-center gap-1.5 text-foreground">
-              <span className="inline-block h-1.5 w-1.5 bg-foreground/60" /> DI Fut
-              <span className="inline-block h-1.5 w-1.5 bg-muted-foreground/20 ml-1.5" /> Focus
+              <span className="inline-block h-1.5 w-1.5 bg-foreground/60" /> Histórico Selic Over
             </div>
           </div>
         </div>
