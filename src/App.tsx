@@ -358,6 +358,35 @@ function App() {
     setWeights(getDefaultWeights());
   }, []);
 
+  const getFooterText = () => {
+    switch (activeModule) {
+      case 'painel':
+        return '© 2026 HFC Consultoria — Módulo de Painel de Controle e Cockpit Geral';
+      case 'renda_variavel':
+        return '© 2026 HFC Consultoria — Módulo de Renda Variável';
+      case 'perfis_investidor':
+        return '© 2026 HFC Consultoria — Módulo de Perfis de Investidor e Matriz de Alocação';
+      case 'renda_fixa':
+      default:
+        if (activeMainTab === 'emissor') {
+          if (activeSubTab === 'analise') {
+            return '© 2026 HFC Consultoria — Módulo de Análise de Emissores de Renda Fixa';
+          } else if (activeSubTab === 'metodologia') {
+            return '© 2026 HFC Consultoria — Módulo de Metodologia e Definição de Scores';
+          } else {
+            return '© 2026 HFC Consultoria — Módulo de Importação e Extração de Renda Fixa';
+          }
+        } else if (activeMainTab === 'indexador') {
+          if (activeSubTab === 'analise') {
+            return '© 2026 HFC Consultoria — Módulo de Otimização por Indexador';
+          } else {
+            return '© 2026 HFC Consultoria — Módulo de Histórico Selic e Expectativa de Juros';
+          }
+        }
+        return '© 2026 HFC Consultoria — Módulo de Renda Fixa';
+    }
+  };
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex h-screen flex-col bg-background selection:bg-foreground selection:text-background overflow-hidden">
@@ -465,7 +494,7 @@ function App() {
         <footer className="shrink-0 border-t border-border/60 py-4 px-8 bg-background z-10">
           <div className="max-w-[1920px] mx-auto flex flex-col md:flex-row items-center justify-center gap-4">
             <p className="font-sans text-xs font-medium text-muted-foreground tracking-wide text-center">
-              © 2026 HFC Consultoria — Módulo de Análise de Ativos de Renda Fixa
+              {getFooterText()}
             </p>
           </div>
         </footer>
