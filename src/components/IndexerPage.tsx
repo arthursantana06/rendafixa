@@ -43,16 +43,16 @@ export function IndexerPage() {
   const [macroData, setMacroData] = useState<MacroScenario | null>(null);
 
   // Profile and Horizon states (defaults, read from localStorage fallback)
-  const [profile, setProfile] = useState<'conservador' | 'moderado' | 'arrojado'>(() => {
+  const [profile, setProfile] = useState<'conservador' | 'moderado' | 'arrojado' | 'todos'>(() => {
     const saved = localStorage.getItem('hfc_profile');
-    return (saved as any) || 'moderado';
+    return (saved as any) || 'todos';
   });
   const [horizon] = useState<'curto' | 'medio' | 'longo'>(() => {
     const saved = localStorage.getItem('hfc_horizon');
     return (saved as any) || 'medio';
   });
 
-  const handleProfileChange = (newProfile: 'conservador' | 'moderado' | 'arrojado') => {
+  const handleProfileChange = (newProfile: 'conservador' | 'moderado' | 'arrojado' | 'todos') => {
     setProfile(newProfile);
     localStorage.setItem('hfc_profile', newProfile);
   };
@@ -267,18 +267,30 @@ export function IndexerPage() {
       }
     };
 
-    const bands = PROFILE_BANDS[profile] || PROFILE_BANDS.moderado;
+    let finalWeights;
 
-    // Calculate final weights scaled proportionately inside the band
-    const preScaledPct = bands.pre.min + (bands.pre.max - bands.pre.min) * preFrac;
-    const ipcaScaledPct = bands.ipca.min + (bands.ipca.max - bands.ipca.min) * ipcaFrac;
-    const cdiScaledPct = bands.cdi.min + (bands.cdi.max - bands.cdi.min) * cdiFrac;
-
-    const finalWeights = {
-      cdi: Math.round(cdiScaledPct * 10) / 10,
-      ipca: Math.round(ipcaScaledPct * 10) / 10,
-      pre: Math.round(preScaledPct * 10) / 10
-    };
+    if (profile === 'todos') {
+      // Direct raw mapping to final weights (reverting to formula outputs directly)
+      const prePct = preFrac * 100;
+      const ipcaPct = ipcaFrac * 100;
+      const cdiPct = cdiFrac * 100;
+      finalWeights = {
+        cdi: Math.round(cdiPct * 10) / 10,
+        ipca: Math.round(ipcaPct * 10) / 10,
+        pre: Math.round(prePct * 10) / 10
+      };
+    } else {
+      const bands = PROFILE_BANDS[profile] || PROFILE_BANDS.moderado;
+      // Calculate final weights scaled proportionately inside the band
+      const preScaledPct = bands.pre.min + (bands.pre.max - bands.pre.min) * preFrac;
+      const ipcaScaledPct = bands.ipca.min + (bands.ipca.max - bands.ipca.min) * ipcaFrac;
+      const cdiScaledPct = bands.cdi.min + (bands.cdi.max - bands.cdi.min) * cdiFrac;
+      finalWeights = {
+        cdi: Math.round(cdiScaledPct * 10) / 10,
+        ipca: Math.round(ipcaScaledPct * 10) / 10,
+        pre: Math.round(preScaledPct * 10) / 10
+      };
+    }
 
     return {
       premioDeMercado,
@@ -339,9 +351,9 @@ export function IndexerPage() {
             Perfil de Investimento:
           </span>
           <div className="flex items-center gap-1.5">
-            {(['conservador', 'moderado', 'arrojado'] as const).map((p) => {
+            {(['todos', 'conservador', 'moderado', 'arrojado'] as const).map((p) => {
               const isActive = profile === p;
-              const labels = { conservador: 'Conservador', moderado: 'Moderado', arrojado: 'Arrojado' };
+              const labels = { todos: 'Todos', conservador: 'Conservador', moderado: 'Moderado', arrojado: 'Arrojado' };
               return (
                 <button
                   key={p}
@@ -364,6 +376,7 @@ export function IndexerPage() {
         <div className="text-[10px] font-sans text-muted-foreground leading-relaxed">
           As alocações alvo abaixo são ajustadas dinamicamente dentro dos limites mandatórios do perfil selecionado:
           <span className="ml-1 text-foreground font-semibold">
+            {profile === 'todos' && 'Sem Filtro (Fórmulas Brutas, Soma Verificada)'}
             {profile === 'conservador' && 'CDI (20-70%) | IPCA (0-20%) | PRÉ (0-10%)'}
             {profile === 'moderado' && 'CDI (15-50%) | IPCA (10-40%) | PRÉ (5-20%)'}
             {profile === 'arrojado' && 'CDI (5-30%) | IPCA (10-30%) | PRÉ (5-20%)'}
@@ -448,7 +461,7 @@ export function IndexerPage() {
       </div>
 
       {/* Allocation Sum Verification Alert */}
-      {(() => {
+      {profile === 'todos' && (() => {
         const sum = Math.round((mathData.finalWeights.cdi + mathData.finalWeights.ipca + mathData.finalWeights.pre) * 10) / 10;
         const isOk = Math.abs(sum - 100) < 0.05;
         return (

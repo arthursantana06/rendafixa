@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, CircleDollarSign } from 'lucide-react';
+import { CircleDollarSign } from 'lucide-react';
 
 interface MatrixRow {
   assetClass: string;
@@ -163,235 +163,243 @@ export function PerfisInvestidorPage() {
         </div>
       </div>
 
-      {/* Resumo da Política de Investimentos (Unidades 1 e 2) */}
-      <div className="border border-border bg-card p-6 space-y-4">
-        <h3 className="font-sans text-[11px] font-black uppercase tracking-widest text-foreground border-b border-border/30 pb-2 flex items-center gap-2">
-          <Shield className="h-4 w-4 text-muted-foreground" />
-          Diretrizes de Alocação e Suitability (Resumo das Unidades 1 & 2 do Manual)
-        </h3>
+      {/* Main Grid: Left for Suitability Guidelines, Right for Matrix & Simulator */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-sans text-xs text-muted-foreground leading-relaxed">
-          {/* Unidade 1: Introdução e Governança do Documento */}
-          <div className="space-y-2.5">
-            <h4 className="font-sans text-[10px] font-bold uppercase tracking-wider text-foreground">
-              Unidade 1: Governança & Objetivo Fiduciário
-            </h4>
-            <ul className="list-disc pl-4 space-y-1.5">
-              <li>
-                <strong className="text-foreground">Compromisso Fiduciário:</strong> Estabelece as diretrizes estruturais, metodológicas e operacionais para a alocação de portfólios, garantindo que as recomendações estejam em estrito alinhamento ao perfil do investidor.
-              </li>
-              <li>
-                <strong className="text-foreground">Base Regulatória:</strong> Em total conformidade com a regulação vigente da CVM, notadamente as diretrizes da <strong className="text-foreground font-mono">Resolução CVM nº 30</strong> (dever de Suitability), e os Códigos ANBIMA de Administração de Recursos.
-              </li>
-              <li>
-                <strong className="text-foreground">Comitê de Investimentos:</strong> As premissas e prêmios de risco de cada classe de ativos são revisados anualmente pelo comitê interno ou sob choques sistêmicos e alterações materiais de mercado.
-              </li>
-            </ul>
-          </div>
-
-          {/* Unidade 2: Metodologia de KYC (Know Your Customer) e API */}
-          <div className="space-y-2.5">
-            <h4 className="font-sans text-[10px] font-bold uppercase tracking-wider text-foreground">
-              Unidade 2: Metodologia de Adequação (KYC / API)
-            </h4>
-            <ul className="list-disc pl-4 space-y-1.5">
-              <li>
-                <strong className="text-foreground">Situação Financeira:</strong> Avalia a capacidade empírica de absorver perdas patrimoniais sem comprometer o padrão de vida (reserva de emergência, fluxo de caixa e patrimônio líquido).
-              </li>
-              <li>
-                <strong className="text-foreground">Objetivos e Horizonte Temporal:</strong> Mapeia a finalidade dos recursos (aposentadoria, sucessão, etc.). O tempo é tratado como o principal mitigador natural de volatilidade do portfólio.
-              </li>
-              <li>
-                <strong className="text-foreground">Conhecimento Prático:</strong> Mede a familiaridade do investidor com conceitos como marcação a mercado, risco de crédito, risco de liquidez e derivativos.
-              </li>
-              <li>
-                <strong className="text-foreground">Validade de API:</strong> O perfil de investidor aprovado possui validade estrita de <strong className="text-foreground">24 meses</strong>. Após este período, a carteira fica impedida de receber novas alocações de risco até a renovação formal do questionário.
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Container: Grid layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        
-        {/* Left Column: Asset Allocation Matrix Table (xl:col-span-8 or xl:col-span-12) */}
-        <div className={`${isSimulatorOpen ? 'xl:col-span-8' : 'xl:col-span-12'} space-y-4 transition-all duration-300`}>
-          <div className="border border-border/60 bg-card rounded-none overflow-hidden">
-            <div className="border-b border-border/40 bg-muted/5 px-4 py-3 flex items-center justify-between">
-              <h3 className="font-sans text-[11px] font-black uppercase tracking-widest text-foreground">
-                Matriz de Alocação de Ativos (Limites Mandatórios %)
-              </h3>
-              <button
-                onClick={() => setIsSimulatorOpen(!isSimulatorOpen)}
-                className="px-3 py-1 bg-foreground/5 border border-foreground/15 hover:border-foreground/30 font-sans text-[9px] font-bold uppercase tracking-wider text-foreground hover:bg-foreground/10 transition-colors cursor-pointer"
-              >
-                {isSimulatorOpen ? 'Ocultar Calculadora' : 'Calculadora de Alocação'}
-              </button>
-            </div>
+        {/* Left Column: Diretrizes de Alocação e Suitability (xl:col-span-4) */}
+        <div className="xl:col-span-4 flex flex-col gap-6 overflow-y-auto pr-4 scrollbar-thin">
+          <section className="flex flex-col gap-4">
+            <h3 className="font-sans text-[10px] font-bold uppercase tracking-widest text-foreground border-b border-border/60 pb-2">
+              Diretrizes de Alocação e Suitability
+            </h3>
             
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs font-sans">
-                <thead>
-                  <tr className="border-b border-border/40 bg-muted/10">
-                    <th className="p-3 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">
-                      Classe de Ativo
-                    </th>
-                    <th className="p-3 font-bold text-center border-l border-border/20 text-[#0cb97e] bg-[#0cb97e]/5 uppercase tracking-wider text-[10px] w-[16%]">
-                      Ultra Conservador
-                    </th>
-                    <th className="p-3 font-bold text-center border-l border-border/20 text-[#2ecc71] bg-[#2ecc71]/5 uppercase tracking-wider text-[10px] w-[16%]">
-                      Conservador
-                    </th>
-                    <th className="p-3 font-bold text-center border-l border-border/20 text-[#f39c12] bg-[#f39c12]/5 uppercase tracking-wider text-[10px] w-[16%]">
-                      Moderado
-                    </th>
-                    <th className="p-3 font-bold text-center border-l border-border/20 text-[#f97316] bg-[#f97316]/5 uppercase tracking-wider text-[10px] w-[16%]">
-                      Arrojado
-                    </th>
-                    <th className="p-3 font-bold text-center border-l border-border/20 text-[#ef4444] bg-[#ef4444]/5 uppercase tracking-wider text-[10px] w-[16%]">
-                      Ultra Arrojado
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/20">
-                  {ALLOCATION_MATRIX.map((row, idx) => (
-                    <tr 
-                      key={idx} 
-                      className="hover:bg-muted/5 transition-colors border-b border-border/10"
-                    >
-                      <td className="p-3 font-semibold text-foreground border-r border-border/10">
-                        {row.assetClass}
-                      </td>
-                      <td className="p-3 text-center font-mono text-muted-foreground border-r border-border/10 bg-[#0cb97e]/[0.01]">
-                        {row.ultraConservador}
-                      </td>
-                      <td className="p-3 text-center font-mono text-muted-foreground border-r border-border/10 bg-[#2ecc71]/[0.01]">
-                        {row.conservador}
-                      </td>
-                      <td className="p-3 text-center font-mono text-foreground border-r border-border/10 bg-[#f39c12]/[0.01] font-semibold">
-                        {row.moderado}
-                      </td>
-                      <td className="p-3 text-center font-mono text-muted-foreground border-r border-border/10 bg-[#f97316]/[0.01]">
-                        {row.arrojado}
-                      </td>
-                      <td className="p-3 text-center font-mono text-muted-foreground bg-[#ef4444]/[0.01]">
-                        {row.ultraArrojado}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="bg-muted/30 p-4 border-l-2 border-foreground">
+              <p className="font-sans text-[11px] text-foreground leading-relaxed">
+                Este sumário estabelece as diretrizes estruturais, metodológicas e operacionais para a alocação de portfólios e gestão fiduciária de patrimônio da consultoria.
+              </p>
             </div>
-          </div>
-        </div>
 
-        {/* Right Column: Interactive Portfolio Range Calculator (xl:col-span-4) */}
-        {isSimulatorOpen && (
-          <div className="xl:col-span-4 space-y-6 animate-in slide-in-from-right duration-300">
-            <div className="border border-border/60 bg-card p-5 space-y-5">
-              <div className="border-b border-border/20 pb-3 flex items-center gap-2">
-                <CircleDollarSign className="h-4.5 w-4.5 text-foreground" />
-                <h3 className="font-sans text-[11px] font-black uppercase tracking-widest text-foreground">
-                  Simulador de Faixas de Alocação
-                </h3>
-              </div>
-
-              {/* Input Capital */}
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-sans font-bold uppercase tracking-wider text-muted-foreground block">
-                  Capital Total para Alocação
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-xs text-muted-foreground font-mono">
-                    R$
-                  </span>
-                  <input
-                    type="text"
-                    value={capital > 0 ? capital.toLocaleString('pt-BR') : ''}
-                    onChange={(e) => handleCapitalInputChange(e.target.value)}
-                    placeholder="100.000"
-                    className="w-full bg-muted/10 border border-border/80 px-3 py-2 pl-9 font-mono text-xs text-foreground focus:outline-none focus:border-foreground"
-                  />
-                </div>
-              </div>
-
-              {/* Profiles Selector */}
-              <div className="space-y-2">
-                <label className="text-[9px] font-sans font-bold uppercase tracking-wider text-muted-foreground block">
-                  Selecione o Perfil do Cliente
-                </label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(Object.keys(PROFILE_DETAILS) as ProfileKey[]).map((key) => {
-                    const details = PROFILE_DETAILS[key];
-                    const isSelected = selectedProfile === key;
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => setSelectedProfile(key)}
-                        className={`px-2 py-2 border text-[9px] font-sans font-black uppercase tracking-wider text-center transition-all cursor-pointer ${
-                          isSelected
-                            ? `bg-foreground text-background border-foreground`
-                            : 'border-border/50 bg-transparent text-muted-foreground hover:border-border hover:text-foreground'
-                        }`}
-                      >
-                        {details.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Profile Info Box */}
-              <div className={`p-3.5 border ${PROFILE_DETAILS[selectedProfile].border} ${PROFILE_DETAILS[selectedProfile].bg} space-y-1`}>
-                <span className={`text-[9px] font-sans font-black uppercase tracking-wider ${PROFILE_DETAILS[selectedProfile].color}`}>
-                  {PROFILE_DETAILS[selectedProfile].label}
-                </span>
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  {PROFILE_DETAILS[selectedProfile].desc}
+            <div className="flex flex-col gap-4 text-foreground/80 font-sans text-[11px] leading-relaxed">
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-foreground mb-1">
+                  1. Compromisso Fiduciário e Governança
+                </h4>
+                <p className="text-muted-foreground">
+                  Garante que todas as recomendações sejam executadas com transparência, diligência e estrito alinhamento ao perfil de risco. As premissas e limites de concentração são revisados anualmente pelo Comitê de Investimentos.
                 </p>
               </div>
 
-              {/* Output table */}
-              <div className="space-y-2 border-t border-border/20 pt-4">
-                <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-muted-foreground block mb-2">
-                  Limites Recomendados (R$)
-                </span>
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-foreground mb-1">
+                  2. Base Regulatória (Resolução CVM nº 30)
+                </h4>
+                <p className="text-muted-foreground">
+                  Alinhamento mandatório com o dever de verificação de adequação dos investimentos (Suitability) e com os códigos de melhores práticas da ANBIMA para distribuição de produtos de terceiros.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-foreground mb-1">
+                  3. Metodologia KYC (Know Your Customer)
+                </h4>
+                <p className="text-muted-foreground">
+                  A adequação do portfólio baseia-se em três pilares avaliados via questionário API: a <strong className="text-foreground">Situação Financeira</strong> (capacidade de perda), os <strong className="text-foreground">Objetivos de Investimento</strong> (com foco no tempo como mitigador de risco) e o <strong className="text-foreground">Conhecimento Prático</strong>.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-foreground mb-1">
+                  4. Validade e Renovação Cadastral
+                </h4>
+                <p className="text-muted-foreground">
+                  A API aprovada possui validade regulatória estrita de <strong className="text-foreground">24 meses</strong>. Expirado o prazo, novas alocações em ativos de risco ficam suspensas até a renovação formal do questionário.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Right Column: Matrix Table & Simulator Calculator (xl:col-span-8) */}
+        <div className="xl:col-span-8 space-y-6">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            
+            {/* Table wrapper: spans full if calculator is closed, or 7 if open */}
+            <div className={`${isSimulatorOpen ? 'col-span-12 xl:col-span-7' : 'col-span-12'} space-y-4 transition-all duration-300`}>
+              <div className="border border-border/60 bg-card rounded-none overflow-hidden">
+                <div className="border-b border-border/40 bg-muted/5 px-4 py-3 flex items-center justify-between">
+                  <h3 className="font-sans text-[11px] font-black uppercase tracking-widest text-foreground">
+                    Matriz de Alocação de Ativos (Limites Mandatórios %)
+                  </h3>
+                  <button
+                    onClick={() => setIsSimulatorOpen(!isSimulatorOpen)}
+                    className="px-3 py-1 bg-foreground/5 border border-foreground/15 hover:border-foreground/30 font-sans text-[9px] font-bold uppercase tracking-wider text-foreground hover:bg-foreground/10 transition-colors cursor-pointer"
+                  >
+                    {isSimulatorOpen ? 'Ocultar Calculadora' : 'Calculadora de Alocação'}
+                  </button>
+                </div>
                 
-                <div className="space-y-2.5">
-                  {ALLOCATION_MATRIX.map((row, idx) => {
-                    const valStr = row[selectedProfile];
-                    const { minPct, maxPct } = parseRange(valStr);
-                    const minVal = minPct * capital;
-                    const maxVal = maxPct * capital;
-                    
-                    return (
-                      <div key={idx} className="flex justify-between items-baseline border-b border-border/10 pb-1.5 text-xs">
-                        <div>
-                          <span className="font-semibold text-foreground block">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-xs font-sans">
+                    <thead>
+                      <tr className="border-b border-border/40 bg-muted/10">
+                        <th className="p-3 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">
+                          Classe de Ativo
+                        </th>
+                        <th className="p-3 font-bold text-center border-l border-border/20 text-[#0cb97e] bg-[#0cb97e]/5 uppercase tracking-wider text-[10px] w-[16%]">
+                          Ultra Conservador
+                        </th>
+                        <th className="p-3 font-bold text-center border-l border-border/20 text-[#2ecc71] bg-[#2ecc71]/5 uppercase tracking-wider text-[10px] w-[16%]">
+                          Conservador
+                        </th>
+                        <th className="p-3 font-bold text-center border-l border-border/20 text-[#f39c12] bg-[#f39c12]/5 uppercase tracking-wider text-[10px] w-[16%]">
+                          Moderado
+                        </th>
+                        <th className="p-3 font-bold text-center border-l border-border/20 text-[#f97316] bg-[#f97316]/5 uppercase tracking-wider text-[10px] w-[16%]">
+                          Arrojado
+                        </th>
+                        <th className="p-3 font-bold text-center border-l border-border/20 text-[#ef4444] bg-[#ef4444]/5 uppercase tracking-wider text-[10px] w-[16%]">
+                          Ultra Arrojado
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/20">
+                      {ALLOCATION_MATRIX.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-muted/5 transition-colors">
+                          <td className="p-3 font-medium text-foreground border-r border-border/10">
                             {row.assetClass}
-                          </span>
-                          <span className="text-[9px] text-muted-foreground font-mono">
-                            {valStr}
-                          </span>
-                        </div>
-                        <div className="text-right font-mono font-semibold">
-                          {minVal === maxVal ? (
-                            <span className="text-foreground">{formatCurrency(minVal)}</span>
-                          ) : (
-                            <span className="text-foreground">
-                              {formatCurrency(minVal)} - {formatCurrency(maxVal)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                          </td>
+                          <td className="p-3 text-center font-mono text-muted-foreground border-r border-border/10 bg-[#0cb97e]/[0.01]">
+                            {row.ultraConservador}
+                          </td>
+                          <td className="p-3 text-center font-mono text-muted-foreground border-r border-border/10 bg-[#2ecc71]/[0.01]">
+                            {row.conservador}
+                          </td>
+                          <td className="p-3 text-center font-mono text-muted-foreground border-r border-border/10 bg-[#f39c12]/[0.01]">
+                            {row.moderado}
+                          </td>
+                          <td className="p-3 text-center font-mono text-muted-foreground border-r border-border/10 bg-[#f97316]/[0.01]">
+                            {row.arrojado}
+                          </td>
+                          <td className="p-3 text-center font-mono text-muted-foreground bg-[#ef4444]/[0.01]">
+                            {row.ultraArrojado}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
+
+            {/* Right Column: Interactive Portfolio Range Calculator (xl:col-span-5) */}
+            {isSimulatorOpen && (
+              <div className="col-span-12 xl:col-span-5 space-y-6 animate-in slide-in-from-right duration-300">
+                <div className="border border-border/60 bg-card p-5 space-y-5">
+                  <div className="border-b border-border/20 pb-3 flex items-center gap-2">
+                    <CircleDollarSign className="h-4.5 w-4.5 text-foreground" />
+                    <h3 className="font-sans text-[11px] font-black uppercase tracking-widest text-foreground">
+                      Simulador de Faixas de Alocação
+                    </h3>
+                  </div>
+
+                  {/* Input Capital */}
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-sans font-bold uppercase tracking-wider text-muted-foreground block">
+                      Capital Total para Alocação
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-xs text-muted-foreground font-mono">
+                        R$
+                      </span>
+                      <input
+                        type="text"
+                        value={capital > 0 ? capital.toLocaleString('pt-BR') : ''}
+                        onChange={(e) => handleCapitalInputChange(e.target.value)}
+                        placeholder="100.000"
+                        className="w-full bg-muted/10 border border-border/80 px-3 py-2 pl-9 font-mono text-xs text-foreground focus:outline-none focus:border-foreground"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Profiles Selector */}
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-sans font-bold uppercase tracking-wider text-muted-foreground block">
+                      Selecione o Perfil do Cliente
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {(Object.keys(PROFILE_DETAILS) as ProfileKey[]).map((key) => {
+                        const details = PROFILE_DETAILS[key];
+                        const isSelected = selectedProfile === key;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setSelectedProfile(key)}
+                            className={`px-2 py-2 border text-[9px] font-sans font-black uppercase tracking-wider text-center transition-all cursor-pointer ${
+                              isSelected
+                                ? `bg-foreground text-background border-foreground`
+                                : 'border-border/50 bg-transparent text-muted-foreground hover:border-border hover:text-foreground'
+                            }`}
+                          >
+                            {details.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Profile Info Box */}
+                  <div className={`p-3.5 border ${PROFILE_DETAILS[selectedProfile].border} ${PROFILE_DETAILS[selectedProfile].bg} space-y-1`}>
+                    <span className={`text-[9px] font-sans font-black uppercase tracking-wider ${PROFILE_DETAILS[selectedProfile].color}`}>
+                      {PROFILE_DETAILS[selectedProfile].label}
+                    </span>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      {PROFILE_DETAILS[selectedProfile].desc}
+                    </p>
+                  </div>
+
+                  {/* Output table */}
+                  <div className="space-y-2 border-t border-border/20 pt-4">
+                    <span className="text-[9px] font-sans font-bold uppercase tracking-widest text-muted-foreground block mb-2">
+                      Limites Recomendados (R$)
+                    </span>
+                    
+                    <div className="space-y-2.5">
+                      {ALLOCATION_MATRIX.map((row, idx) => {
+                        const valStr = row[selectedProfile];
+                        const { minPct, maxPct } = parseRange(valStr);
+                        const minVal = minPct * capital;
+                        const maxVal = maxPct * capital;
+                        
+                        return (
+                          <div key={idx} className="flex justify-between items-baseline border-b border-border/10 pb-1.5 text-xs">
+                            <div>
+                              <span className="font-semibold text-foreground block">
+                                {row.assetClass}
+                              </span>
+                              <span className="text-[9px] text-muted-foreground font-mono">
+                                {valStr}
+                              </span>
+                            </div>
+                            <div className="text-right font-mono font-semibold">
+                              {minVal === maxVal ? (
+                                <span className="text-foreground">{formatCurrency(minVal)}</span>
+                              ) : (
+                                <span className="text-foreground">
+                                  {formatCurrency(minVal)} - {formatCurrency(maxVal)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
           </div>
-        )}
+        </div>
 
       </div>
     </div>
