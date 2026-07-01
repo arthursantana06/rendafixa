@@ -69,31 +69,54 @@ export function IndexerPage() {
     return localStorage.getItem('hfc_formula_pre') ?? "J_atual - T_hist";
   });
 
-  // Fetch active macroeconomic data from Supabase
+  // Fetch active macroeconomic data and formulas from Supabase
   const fetchActiveMacroData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // 1. Fetch macro variables
+      const { data: macroResult, error: macroError } = await supabase
         .from('cenarios_macro')
         .select('*')
         .eq('key', 'ativo')
         .single();
 
-      if (error) throw error;
+      if (macroError) throw macroError;
 
-      if (data) {
+      if (macroResult) {
         setMacroData({
-          key: data.key,
-          label: data.label,
-          juros_atuais: Number(data.juros_atuais),
-          expectativa_juros_bacen_2029: Number(data.expectativa_juros_bacen_2029),
-          juros_futuros_d1f29: Number(data.juros_futuros_d1f29),
-          valor_taxa_prefixada_2029: Number(data.valor_taxa_prefixada_2029),
-          taxa_media_historica: Number(data.taxa_media_historica)
+          key: macroResult.key,
+          label: macroResult.label,
+          juros_atuais: Number(macroResult.juros_atuais),
+          expectativa_juros_bacen_2029: Number(macroResult.expectativa_juros_bacen_2029),
+          juros_futuros_d1f29: Number(macroResult.juros_futuros_d1f29),
+          valor_taxa_prefixada_2029: Number(macroResult.valor_taxa_prefixada_2029),
+          taxa_media_historica: Number(macroResult.taxa_media_historica)
+        });
+      }
+
+      // 2. Fetch config formulas
+      const { data: formulasResult, error: formulasError } = await supabase
+        .from('hfc_formulas_config')
+        .select('key, formula');
+
+      if (!formulasError && formulasResult) {
+        formulasResult.forEach((row: any) => {
+          if (row.key === 'cdi') {
+            setFormulaCDI(row.formula);
+            localStorage.setItem('hfc_formula_cdi', row.formula);
+          }
+          if (row.key === 'ipca') {
+            setFormulaIPCA(row.formula);
+            localStorage.setItem('hfc_formula_ipca', row.formula);
+          }
+          if (row.key === 'pre') {
+            setFormulaPRE(row.formula);
+            localStorage.setItem('hfc_formula_pre', row.formula);
+          }
         });
       }
     } catch (e) {
-      console.error('Error fetching active macro data:', e);
+      console.error('Error fetching active macro data or formulas:', e);
       setMacroData({
         key: 'ativo',
         label: 'Cenário Ativo (Atual)',
@@ -111,6 +134,25 @@ export function IndexerPage() {
   useEffect(() => {
     fetchActiveMacroData();
   }, [fetchActiveMacroData]);
+
+  // Auto-save formulas to DB when they change (with debounce)
+  useEffect(() => {
+    if (isLoading) return;
+    const timer = setTimeout(async () => {
+      try {
+        await supabase
+          .from('hfc_formulas_config')
+          .upsert([
+            { key: 'cdi', formula: formulaCDI },
+            { key: 'ipca', formula: formulaIPCA },
+            { key: 'pre', formula: formulaPRE }
+          ]);
+      } catch (e) {
+        console.error('Failed to auto-save formulas to DB:', e);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [formulaCDI, formulaIPCA, formulaPRE, isLoading]);
 
 
 

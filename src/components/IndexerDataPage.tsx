@@ -331,10 +331,18 @@ export function IndexerDataPage() {
     setNewVarValue(1);
   };
 
-  const handleRemoveCustomVariable = (id: string) => {
+  const handleRemoveCustomVariable = async (id: string) => {
     const updated = customVariables.filter(v => v.id !== id);
     setCustomVariables(updated);
     localStorage.setItem('hfc_custom_variables', JSON.stringify(updated));
+    try {
+      await supabase
+        .from('hfc_variaveis_customizadas')
+        .delete()
+        .eq('id', id);
+    } catch (e) {
+      console.error('Failed to delete custom variable from DB:', e);
+    }
   };
 
   const handleCustomVariableSliderChange = (id: string, val: number) => {
@@ -571,6 +579,8 @@ export function IndexerDataPage() {
       setIsLoading(true);
       try {
         await fetchLastUploadDate();
+
+        // 1. Fetch active cenario macro
         const { data, error } = await supabase
           .from('cenarios_macro')
           .select('*')
@@ -598,6 +608,37 @@ export function IndexerDataPage() {
           setTaxaMediaHistorica(tm);
           setTaxaMediaHistoricaStr(tm.toString());
         }
+
+        // 2. Fetch expectation formula
+        const { data: formulaData, error: formulaErr } = await supabase
+          .from('hfc_formulas_config')
+          .select('formula')
+          .eq('key', 'expectativa_propria')
+          .single();
+
+        if (!formulaErr && formulaData) {
+          setExpectativaPropriaFormula(formulaData.formula);
+          localStorage.setItem('hfc_expectativa_propria_formula', formulaData.formula);
+        }
+
+        // 3. Fetch custom variables
+        const { data: varsData, error: varsErr } = await supabase
+          .from('hfc_variaveis_customizadas')
+          .select('*');
+
+        if (!varsErr && varsData && varsData.length > 0) {
+          const formattedVars = varsData.map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            code: v.code,
+            value: Number(v.value),
+            min: Number(v.min),
+            max: Number(v.max),
+            step: Number(v.step)
+          }));
+          setCustomVariables(formattedVars);
+          localStorage.setItem('hfc_custom_variables', JSON.stringify(formattedVars));
+        }
       } catch (e) {
         console.error('Failed to load active variables:', e);
       } finally {
@@ -606,6 +647,46 @@ export function IndexerDataPage() {
     }
     loadData();
   }, []);
+
+  // Auto-save expectation formula to DB (debounced)
+  useEffect(() => {
+    if (isLoading) return;
+    const timer = setTimeout(async () => {
+      try {
+        await supabase
+          .from('hfc_formulas_config')
+          .upsert({ key: 'expectativa_propria', formula: expectativaPropriaFormula });
+      } catch (e) {
+        console.error('Failed to auto-save expectation formula:', e);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [expectativaPropriaFormula, isLoading]);
+
+  // Auto-save custom variables to DB (debounced)
+  useEffect(() => {
+    if (isLoading) return;
+    const timer = setTimeout(async () => {
+      try {
+        if (customVariables.length > 0) {
+          await supabase
+            .from('hfc_variaveis_customizadas')
+            .upsert(customVariables.map(v => ({
+              id: v.id,
+              name: v.name,
+              code: v.code,
+              value: v.value,
+              min: v.min,
+              max: v.max,
+              step: v.step
+            })));
+        }
+      } catch (e) {
+        console.error('Failed to auto-save custom variables to DB:', e);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [customVariables, isLoading]);
 
   // Auto-save manual variables to DB when they change (with a debounce)
   useEffect(() => {
