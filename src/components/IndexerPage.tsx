@@ -7,24 +7,7 @@ import {
 } from 'lucide-react';
 import { evaluateFormula } from '@/lib/formulaParser';
 
-// Default Limits per Profile
-const PROFILE_LIMITS = {
-  conservador: {
-    cdi: { min: 70, max: 100 },
-    ipca: { min: 0, max: 30 },
-    pre: { min: 0, max: 0 }
-  },
-  moderado: {
-    cdi: { min: 40, max: 90 },
-    ipca: { min: 10, max: 50 },
-    pre: { min: 0, max: 20 }
-  },
-  arrojado: {
-    cdi: { min: 10, max: 70 },
-    ipca: { min: 20, max: 70 },
-    pre: { min: 0, max: 40 }
-  }
-};
+// Default Structural Preset matrix
 
 // Default Structural Preset matrix
 const STRUCTURAL_PRESETS: Record<string, Record<string, { cdi: number; ipca: number; pre: number }>> = {
@@ -70,14 +53,10 @@ export function IndexerPage() {
   });
 
   // Expectativa Própria
-  const [expectativaPropria, setExpectativaPropria] = useState(() => {
+  const [expectativaPropria] = useState(() => {
     const saved = localStorage.getItem('hfc_expectativa_propria');
     return saved ? Number(saved) : 10.00;
   });
-  const [expectativaPropriaStr, setExpectativaPropriaStr] = useState(() => {
-    return localStorage.getItem('hfc_expectativa_propria') || "10.00";
-  });
-  const [saveExpectationSuccess, setSaveExpectationSuccess] = useState(false);
 
   // Customizable formulas for each indexer box
   const [formulaCDI, setFormulaCDI] = useState(() => {
@@ -133,28 +112,7 @@ export function IndexerPage() {
     fetchActiveMacroData();
   }, [fetchActiveMacroData]);
 
-  // Update draft states for Expectativa Própria
-  const handleExpectationChange = (val: number | string) => {
-    if (typeof val === 'number') {
-      const rounded = Math.round(val * 100) / 100;
-      setExpectativaPropria(rounded);
-      setExpectativaPropriaStr(rounded.toString());
-    } else {
-      setExpectativaPropriaStr(val);
-      const parsed = parseFloat(val);
-      if (!isNaN(parsed)) {
-        const rounded = Math.round(parsed * 100) / 100;
-        setExpectativaPropria(rounded);
-      }
-    }
-  };
 
-  // Explicit save action
-  const handleSaveExpectation = () => {
-    localStorage.setItem('hfc_expectativa_propria', String(expectativaPropria));
-    setSaveExpectationSuccess(true);
-    setTimeout(() => setSaveExpectationSuccess(false), 2000);
-  };
 
   // Derived Neutral Base weights based on Profile & Horizon
   const baseWeights = useMemo(() => {

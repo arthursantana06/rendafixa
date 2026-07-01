@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Newspaper, TrendingUp, Award, Calendar, ArrowUpRight, Percent, Settings, X, Plus, Edit2, Check } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Newspaper, TrendingUp, Award, Calendar, Settings, X, Plus, Edit2, Check } from 'lucide-react';
 import type { BankAnalysis } from '@/types';
 
 interface PainelPageProps {

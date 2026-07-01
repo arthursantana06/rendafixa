@@ -1,5 +1,4 @@
-import React from 'react';
-import { AreaChart, TrendingUp, HelpCircle, Layers, ShieldAlert, Sparkles } from 'lucide-react';
+import { AreaChart, TrendingUp, Layers, Sparkles } from 'lucide-react';
 
 export function RendaVariavelPage() {
   return (
